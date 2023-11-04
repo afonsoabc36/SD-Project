@@ -1,5 +1,3 @@
-package sd23;
-
 import java.io.ByteArrayOutputStream;
 import java.util.Random;
 import java.util.zip.GZIPOutputStream;

@@ -1,5 +1,3 @@
-package sd23;
-
 public class JobFunctionException extends Exception {
     private static final int CODE = 138;
 
