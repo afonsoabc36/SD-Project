@@ -1,21 +1,50 @@
+import javax.annotation.processing.SupportedSourceVersion;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 
 public class Menu {
     private HashMap<String,String> clients = new HashMap(); // Username, password
-    private final FileWriter writer;
+    private FileWriter writer = null;
+
+    private String activeUser;
+
+    public void setActiveUser(String activeUser) {
+        this.activeUser = activeUser;
+    }
+
+    public String getActiveUser() {
+        return activeUser;
+    }
 
     public Menu() throws IOException {
         String dbPath = "./db/clientsDB.csv";
-        writer = new FileWriter(dbPath);
+        writer = new FileWriter(dbPath, true);
+        BufferedReader reader = new BufferedReader(new FileReader(dbPath));
+
+        String line;
+
+        while((line = reader.readLine()) != null) {
+
+            String[] parts = line.split(",");
+            if (parts.length >= 2) {
+                String key = parts[0].trim();
+                String value = parts[1].trim();
+                clients.put(key, value);
+            }
+        }
+
     }
 
 
@@ -24,28 +53,31 @@ public class Menu {
 
         writer.append(username+','+password+'\n');
         writer.close();
+
+        setActiveUser(username);
     }
 
     private Boolean existsClient(String username, String password) {
-        if (this.clients.get(username)==null || this.clients.get(username) != password) {
+        if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
             return false;
         }
+        setActiveUser(username);
         return true;
     }
 
-    public static void loginPage(Menu s) {
+
+    private static void loginPage(Menu s, Client c, ArrayList<String> requests) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 150);
-        frame.setLayout(new BorderLayout());
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(3, 2));
+        JPanel panel = new JPanel(new GridLayout(3, 2));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 
         JLabel usernameLabel = new JLabel("Username:");
         JLabel passwordLabel = new JLabel("Password:");
-        JTextField usernameField = new JTextField();
-        JPasswordField passwordField = new JPasswordField();
+        JTextField usernameField = new JTextField(20);
+        JPasswordField passwordField = new JPasswordField(20);
         JButton loginButton = new JButton("Login");
         JButton registerButton = new JButton("Register");
 
@@ -53,11 +85,12 @@ public class Menu {
         panel.add(usernameField);
         panel.add(passwordLabel);
         panel.add(passwordField);
-        panel.add(new JLabel()); // Empty label for spacing
-        panel.add(registerButton);
-        panel.add(loginButton);
+
+        buttonPanel.add(registerButton);
+        buttonPanel.add(loginButton);
 
         frame.add(panel, BorderLayout.CENTER);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
 
         registerButton.addActionListener(new ActionListener() {
             @Override
@@ -65,16 +98,16 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (!s.existsClient(username,password)) {
+                if (!s.existsClient(username, password)) {
                     try {
-                        s.addClient(username,password);
+                        s.addClient(username, password);
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
                 }
 
-                mainMenuPage(s);
-
+                mainMenuPage(s,c,requests);
+                frame.setVisible(false);
             }
         });
 
@@ -84,8 +117,9 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (s.existsClient(username,password)) {
-                    mainMenuPage(s);
+                if (s.existsClient(username, password)) {
+                    mainMenuPage(s,c,requests);
+                    frame.setVisible(false);
                 } else {
                     JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
                 }
@@ -96,10 +130,11 @@ public class Menu {
     }
 
 
-    public static void mainMenuPage(Menu s) {
+
+    private static void mainMenuPage(Menu s, Client c, ArrayList<String> requests) {
         JFrame frame = new JFrame("Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 150);
+        frame.setSize(800, 400);
         frame.setLayout(new BorderLayout());
 
         JPanel panel = new JPanel();
@@ -116,24 +151,26 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                runCodePage(s);
+                runCodePage(s,c,requests);
+                frame.setVisible(false);
             }
         });
 
         seeOutputs.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                outputsPage(s);
+                outputsPage(s,c,requests);
+                frame.setVisible(false);
             }
         });
 
         frame.setVisible(true);
     }
 
-    public static void runCodePage(Menu s) {
+    private static void runCodePage(Menu s, Client c, ArrayList<String> requests) {
         JFrame frame = new JFrame("Run Code");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 150);
+        frame.setSize(800, 400);
         frame.setLayout(new BorderLayout());
 
         JPanel panel = new JPanel();
@@ -161,18 +198,28 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // TODO: pass the code to the main server
+                requests.add(urlField.getText());
+                frame.setVisible(false);
             }
         });
+
+        goBack.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainMenuPage(s,c,requests);
+                frame.setVisible(false);
+            }
+        });
+
 
         frame.setVisible(true);
     }
 
 
-    public static void outputsPage(Menu s) {
+    private static void outputsPage(Menu s, Client c, ArrayList<String> requests) { //TODO: Incompleto, "pseudocodigo"
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(400, 300);
+        frame.setSize(800, 400);
 
         JPanel mainPanel = new JPanel(new BorderLayout());
         JPanel goBackPanel = new JPanel(new BorderLayout());
@@ -180,6 +227,13 @@ public class Menu {
         JButton goBack = new JButton("<-");
         goBack.add(goBack, BorderLayout.WEST);
 
+        goBack.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainMenuPage(s,c,requests);
+                frame.setVisible(false);
+            }
+        });
 
 
         // TODO: get the list from the main server
@@ -209,11 +263,16 @@ public class Menu {
     }
 
 
-
-
-    public static void main(String[] args) throws IOException {
-        Menu s = new Menu();
-        loginPage(s);
+    public static void deploy(Client c, ArrayList<String> requests) throws IOException {
+        Menu m = new Menu();
+        loginPage(m,c,requests);
     }
 
+    /*
+    public static void main(String[] args) throws IOException {
+        Menu m = new Menu();
+        Client c = new Client();
+        loginPage(m,c);
+    }
+    */
 }
