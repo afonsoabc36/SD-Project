@@ -66,7 +66,7 @@ public class Menu {
     }
 
 
-    private static void loginPage(Menu s, Client c, ArrayList<String> requests) {
+    private static void loginPage(Menu s, Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 150);
@@ -106,7 +106,7 @@ public class Menu {
                     }
                 }
 
-                mainMenuPage(s,c,requests);
+                mainMenuPage(s,c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -118,7 +118,7 @@ public class Menu {
                 String password = new String(passwordField.getPassword());
 
                 if (s.existsClient(username, password)) {
-                    mainMenuPage(s,c,requests);
+                    mainMenuPage(s,c,clientHandler);
                     frame.setVisible(false);
                 } else {
                     JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
@@ -131,7 +131,7 @@ public class Menu {
 
 
 
-    private static void mainMenuPage(Menu s, Client c, ArrayList<String> requests) {
+    private static void mainMenuPage(Menu s, Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -151,7 +151,7 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                runCodePage(s,c,requests);
+                runCodePage(s,c,clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -159,7 +159,7 @@ public class Menu {
         seeOutputs.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                outputsPage(s,c,requests);
+                outputsPage(s,c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -167,7 +167,7 @@ public class Menu {
         frame.setVisible(true);
     }
 
-    private static void runCodePage(Menu s, Client c, ArrayList<String> requests) {
+    private static void runCodePage(Menu s, Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Run Code");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -198,7 +198,9 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                requests.add(urlField.getText());
+                ClientFileInfo cfi = new ClientFileInfo(c,urlField.getText());
+                c.addClientFileInfo(cfi);
+                clientHandler.toDoFiles.insertToDoFile(cfi); // Acho que isto aqui deveria ser algo como uima mensagem por socket do cliente a pedri ao clientHandler para guardar aquela info, visto isto acho que tb não faz sentido o client estar no ClientHandler, sendo que eles so se comunicam, mas são independentes
                 frame.setVisible(false);
             }
         });
@@ -206,7 +208,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(s,c,requests);
+                mainMenuPage(s,c,clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -216,7 +218,7 @@ public class Menu {
     }
 
 
-    private static void outputsPage(Menu s, Client c, ArrayList<String> requests) { //TODO: Incompleto, "pseudocodigo"
+    private static void outputsPage(Menu s, Client c, ClientHandler clientHandler) { //TODO: Incompleto, "pseudocodigo"
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -230,7 +232,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(s,c,requests);
+                mainMenuPage(s,c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -263,9 +265,9 @@ public class Menu {
     }
 
 
-    public static void deploy(Client c, ArrayList<String> requests) throws IOException {
+    public static void deploy(Client c, ClientHandler clientHandler) throws IOException {
         Menu m = new Menu();
-        loginPage(m,c,requests);
+        loginPage(m,c, clientHandler);
     }
 
     /*

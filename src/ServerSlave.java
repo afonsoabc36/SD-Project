@@ -17,10 +17,12 @@ public class ServerSlave implements Runnable {
     ReentrantLock lock;
     Condition condition;
     Socket socket;
+    String name;
     boolean free; // True if the server is not executing code
     int maxCapacity; // The maximum number of bytes that the code can have in order to be executed in this server
 
-    public ServerSlave(int maxCapacity) {
+    public ServerSlave(int maxCapacity, String name) {
+        this.name = name;
         this.free = true;
         this.maxCapacity = maxCapacity;
     }
@@ -32,6 +34,19 @@ public class ServerSlave implements Runnable {
         this.free = true;
         this.maxCapacity = maxCapacity;
     }
+
+    public String getName(){
+        return this.name;
+    }
+
+    public boolean isFree() {
+        return free;
+    }
+
+    public int getMaxCapacity() {
+        return this.maxCapacity;
+    }
+
 
     @Override
     public void run() {
@@ -62,7 +77,7 @@ public class ServerSlave implements Runnable {
                 } finally {
                     this.free = true; // Server is now free
                     this.lock.unlock();
-                    this.condition.signalAll(); // Wakes up the main server that might be waiting
+                    this.condition.signalAll(); // Wakes up the thread that might be waiting for a ServerSlave
                 }
             }
         } catch (IOException e) {
