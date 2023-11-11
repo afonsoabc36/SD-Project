@@ -32,7 +32,7 @@ public class Client {
         Client c = new Client();
         Menu m = new Menu();
         while (true) {
-            try {
+            try { // TODO: Mudar o código do servidor, ele não manda nada diretamente, interage com o menu apenas
                 Socket socket = new Socket("localhost", 12345);
 
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

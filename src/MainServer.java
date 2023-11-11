@@ -17,9 +17,9 @@ public class MainServer implements Runnable {
 
 
     public void initializeSlaves(int N, int capacity) {
-        HashMap<String,ServerSlave> hash = new HashMap<>();
+        HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
         for (int i = 0; i<N; i++) {
-            String name = "serverSlave" + i;
+            String name = "ServerSlave" + i;
             ServerSlave serverSlave = new ServerSlave(capacity, name); // TODO: Change capacity
             hash.put(name,serverSlave);
         }
@@ -34,10 +34,9 @@ public class MainServer implements Runnable {
             initializeSlaves(nOfSlaves, capacity);
             ServerSocket ss = new ServerSocket(12345);
 
-            while (true) {
-                Socket socket = ss.accept();
-                Thread handler = new Thread(new ClientHandler(socket, toDoFiles, doneFiles, serverSlaves)); // TODO: não vai passar o server, vai passar a class com os doneFiles, toDoFiles, servers
-                handler.start();
+            while (true) { // Sempre à espera de novas conexões
+                Socket socket = ss.accept(); // Establece a conexão com o cliente
+                new ClientHandler(socket, toDoFiles, doneFiles, serverSlaves).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
 
         } catch (IOException e) {
@@ -46,8 +45,12 @@ public class MainServer implements Runnable {
     }
 }
 
-//Estamos a fazer 3 classes para ter locks mais granulares
+// Estamos a fazer 3 classes para ter locks mais granulares
 
+/*
+* Classe que vai ser partilhada por todas as threads
+* Contém uma lista de outputs dos ficheiros já corridos
+*/
 class DoneFiles {
 
     private ArrayList<ClientFileInfo> doneFiles;
@@ -78,6 +81,10 @@ class DoneFiles {
 
 }
 
+/*
+ * Classe que vai ser partilhada por todas as threads
+ * Contém uma lista de ficheiros ainda não corridos
+ */
 class ToDoFiles {
 
     private ArrayList<ClientFileInfo> toDoFiles;
@@ -108,6 +115,10 @@ class ToDoFiles {
 
 }
 
+/*
+ * Classe que vai ser partilhada por todas as threads
+ * Contém um Map com todos os Slaves inicializados, de forma a saber quais estão livres
+ */
 class ServerSlaves {
 
     private HashMap<String, ServerSlave> serverSlaves;
@@ -121,13 +132,16 @@ class ServerSlaves {
     }
     public String getFreeServer(int space) throws InterruptedException {
 
-        while (true) { // TODO: Check true
+        while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
             for (ServerSlave slave : serverSlaves.values()) {
                 if (slave.isFree() && slave.getMaxCapacity() > space) {
-                    return slave.getName();
+                    return slave.getName(); // TODO: Maybe dar return logo do ServerSlave
                 }
             }
-            condition.await();
+            // TODO: Adicionar aqui uma verificação
+            // Verificação: Se não consegui correr o código pelo mesmo ocupar muito espaço, em todos os servidores, apresentar um erro ao Cliente
+            // Maybe adicionar um counter e se o nº de vezes que acontece for igual ao nº de Slaves apresentar o Erro
+            condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
         }
     }
 }

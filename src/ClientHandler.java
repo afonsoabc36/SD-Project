@@ -6,6 +6,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 
+/*
+* Classe/Thread que vai ser criada para cada cliente que se conecte ao MainServer
+*/
 public class ClientHandler extends Thread {
     Socket socket;
     Client client;

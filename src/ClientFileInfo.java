@@ -4,6 +4,7 @@ public class ClientFileInfo {
     private Client client;
     private String fileURL;
     private LocalDateTime dateTime;
+    // TODO: Maybe adicionar uma variável outputName, deixamos que o utiizador dê nome ao ficheiro de output, assim sabe qual é
 
     public ClientFileInfo(Client client, String fileURL) {
         this.client = client;
