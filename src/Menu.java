@@ -15,7 +15,6 @@ import java.util.Map;
 
 
 public class Menu {
-    private HashMap<String,String> clients = new HashMap(); // Username, password
     private FileWriter writer = null;
 
     private String activeUser;
@@ -29,26 +28,10 @@ public class Menu {
     }
 
     public Menu() throws IOException {
-        String dbPath = "./db/clientsDB.csv";
-        writer = new FileWriter(dbPath, true);
-        BufferedReader reader = new BufferedReader(new FileReader(dbPath));
-
-        String line;
-
-        while((line = reader.readLine()) != null) {
-
-            String[] parts = line.split(",");
-            if (parts.length >= 2) {
-                String key = parts[0].trim();
-                String value = parts[1].trim();
-                clients.put(key, value);
-            }
-        }
-
     }
 
 
-    private void addClient(String username, String password) throws IOException {
+    public void addClient(String username, String password) throws IOException {
         this.clients.put(username,password);
 
         writer.append(username+','+password+'\n');
@@ -57,16 +40,19 @@ public class Menu {
         setActiveUser(username);
     }
 
-    private Boolean existsClient(String username, String password) {
-        if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
+    public Boolean existsClient(Client c, String username, String password) throws IOException {
+        if (c.hasUser(username,password) == true) {
             return false;
         }
+        //if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
+        //    return false;
+        //}
         setActiveUser(username);
         return true;
     }
 
 
-    private static void loginPage(Menu s, Client c, ClientHandler clientHandler) {
+    private void loginPage(Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 150);
@@ -98,15 +84,15 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (!s.existsClient(username, password)) {
+                if (!existsClient(username, password)) {
                     try {
-                        s.addClient(username, password);
+                        addClient(username, password);
                     } catch (IOException ex) {
                         throw new RuntimeException(ex);
                     }
                 }
 
-                mainMenuPage(s,c, clientHandler);
+                mainMenuPage(c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -117,8 +103,8 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (s.existsClient(username, password)) {
-                    mainMenuPage(s,c,clientHandler);
+                if (existsClient(username, password)) {
+                    mainMenuPage(c,clientHandler);
                     frame.setVisible(false);
                 } else {
                     JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
@@ -131,7 +117,7 @@ public class Menu {
 
 
 
-    private static void mainMenuPage(Menu s, Client c, ClientHandler clientHandler) {
+    private static void mainMenuPage(Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -151,7 +137,7 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                runCodePage(s,c,clientHandler);
+                runCodePage(c,clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -159,7 +145,7 @@ public class Menu {
         seeOutputs.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                outputsPage(s,c, clientHandler);
+                outputsPage(c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -167,7 +153,7 @@ public class Menu {
         frame.setVisible(true);
     }
 
-    private static void runCodePage(Menu s, Client c, ClientHandler clientHandler) {
+    private static void runCodePage(Client c, ClientHandler clientHandler) {
         JFrame frame = new JFrame("Run Code");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -209,7 +195,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(s,c,clientHandler);
+                mainMenuPage(c,clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -219,7 +205,7 @@ public class Menu {
     }
 
 
-    private static void outputsPage(Menu s, Client c, ClientHandler clientHandler) { //TODO: Incompleto, "pseudocodigo"
+    private static void outputsPage(Client c, ClientHandler clientHandler) { //TODO: Incompleto, "pseudocodigo"
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -233,7 +219,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(s,c, clientHandler);
+                mainMenuPage(c, clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -266,9 +252,8 @@ public class Menu {
     }
 
 
-    public static void deploy(Client c, ClientHandler clientHandler) throws IOException {
-        Menu m = new Menu();
-        loginPage(m,c, clientHandler);
+    public void deploy(Client c, ClientHandler clientHandler) throws IOException {
+        loginPage(c, clientHandler);
     }
 
     /*

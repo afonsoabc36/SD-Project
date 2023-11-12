@@ -11,16 +11,32 @@ import java.util.HashMap;
 
 public class Client {
     private String name;
+
+    protected String password;
     private ArrayList<String> requests;
+    private Socket socket;
 
     private ArrayList<ClientFileInfo> info;
 
-    public Client() {
+    public Client() throws IOException {
         this.name = "";
+        this.password = "";
         this.requests = new ArrayList<>();
         this.info = new ArrayList<>();
+        this.socket = new Socket("localhost", 12345);
     }
 
+    public Client(String username, String password) throws IOException {
+        this.name = username;
+        this.password = password;
+        this.requests = new ArrayList<>();
+        this.info = new ArrayList<>();
+        this.socket = new Socket("localhost", 12345);
+    }
+
+    public Socket getSocket(){
+        return this.socket;
+    }
 
     public void setName(String name) {
         this.name = name;
@@ -34,32 +50,39 @@ public class Client {
         this.info.add(cfi);
     }
 
+    public Boolean hasUser(String username, String password) throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(this.getSocket().getInputStream()));
+        PrintWriter out = new PrintWriter(this.getSocket().getOutputStream(), true);
+        
+        out.println("login:"+username+","+password);
+        out.flush();
+        
+        String response = in.readLine();
+
+        return response.equals("OK");
+    }
+
+    public Boolean regUser(String username, String password) throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(this.getSocket().getInputStream()));
+        PrintWriter out = new PrintWriter(this.getSocket().getOutputStream(), true);
+
+        out.println("register:"+username+","+password);
+        out.flush();
+
+        String response = in.readLine();
+
+        return response.equals("OK");
+    }
+
     public static void main(String[] args) throws IOException {
         Client c = new Client();
-        Menu m = new Menu();
-        while (true) {
-            try { // TODO: Mudar o código do servidor, ele não manda nada diretamente, interage com o menu apenas
-                Socket socket = new Socket("localhost", 12345);
+        BufferedReader in = new BufferedReader(new InputStreamReader(c.getSocket().getInputStream()));
+        // PrintWriter out = new PrintWriter(c.getSocket().getOutputStream(), true);
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+        String userInput;
+        while((userInput = in.readLine()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler
 
-                c.setName(m.getActiveUser());
-
-                for (String request : c.getRequests()) {
-                    // Send each URL to the server
-                    out.println(request);
-
-                    String response = in.readLine();
-                    System.out.println("Server response for " + request + ": " + response);
-                }
-
-                // Close the socket when all URLs have been processed
-                socket.close();
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
+        c.getSocket().close();
     }
 }

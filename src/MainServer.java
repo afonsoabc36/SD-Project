@@ -5,16 +5,42 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.io.FileWriter;
+
 
 // Acho que devia existir um main para permitir que o server corresse
 
 public class MainServer implements Runnable {
+
+    private FileWriter writer = null;
+
+    private HashMap<String,Client> clients;
 
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
     private int nOfSlaves = 6;
 
+
+
+    public void allClients() throws IOException {
+        String dbPath = "./db/clientsDB.csv";
+        this.writer = new FileWriter(dbPath, true);
+        BufferedReader reader = new BufferedReader(new FileReader(dbPath));
+
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+
+            String[] parts = line.split(",");
+            if (parts.length >= 2) {
+                String key = parts[0].trim();
+                String value = parts[1].trim();
+                Client c = new Client(key,value);
+                clients.put(key, c);
+            }
+        }
+    }
 
     public void initializeSlaves(int N, int capacity) {
         HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
@@ -36,7 +62,7 @@ public class MainServer implements Runnable {
 
             while (true) { // Sempre listening para novas conexões
                 Socket socket = ss.accept(); // Establece a conexão com o cliente
-                new ClientHandler(socket, toDoFiles, doneFiles, serverSlaves).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
+                new ClientHandler(new Client(), socket, toDoFiles, doneFiles, serverSlaves).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
 
         } catch (IOException e) {
