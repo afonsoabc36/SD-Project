@@ -195,16 +195,17 @@ public class Menu {
 
         frame.add(panel, BorderLayout.CENTER);
 
+        // Pressionar o botão de Run Code
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 ClientFileInfo cfi = new ClientFileInfo(c,urlField.getText());
-                c.addClientFileInfo(cfi);
-                clientHandler.toDoFiles.insertToDoFile(cfi); // Acho que isto aqui deveria ser algo como uima mensagem por socket do cliente a pedri ao clientHandler para guardar aquela info, visto isto acho que tb não faz sentido o client estar no ClientHandler, sendo que eles so se comunicam, mas são independentes
+                clientHandler.insertToDoFile(cfi); // Insere o ficheiro na lista de ficheiros a correr
                 frame.setVisible(false);
             }
         });
 
+        // Pressionar o botão para voltar à página anterior
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

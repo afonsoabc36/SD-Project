@@ -15,6 +15,12 @@ public class Client {
 
     private ArrayList<ClientFileInfo> info;
 
+    public Client() {
+        this.name = "";
+        this.requests = new ArrayList<>();
+        this.info = new ArrayList<>();
+    }
+
 
     public void setName(String name) {
         this.name = name;

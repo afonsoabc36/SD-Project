@@ -34,7 +34,7 @@ public class MainServer implements Runnable {
             initializeSlaves(nOfSlaves, capacity);
             ServerSocket ss = new ServerSocket(12345);
 
-            while (true) { // Sempre à espera de novas conexões
+            while (true) { // Sempre listening para novas conexões
                 Socket socket = ss.accept(); // Establece a conexão com o cliente
                 new ClientHandler(socket, toDoFiles, doneFiles, serverSlaves).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
@@ -43,6 +43,11 @@ public class MainServer implements Runnable {
             e.printStackTrace();
         }
     }
+    
+    public static void main(String[] args){
+        new MainServer().run();
+    }
+
 }
 
 // Estamos a fazer 3 classes para ter locks mais granulares
