@@ -11,17 +11,13 @@ import java.util.HashMap;
 
 public class Client {
     private String name;
-
     protected String password;
-    private ArrayList<String> requests;
     private Socket socket;
-
-    private ArrayList<ClientFileInfo> info;
+    private ArrayList<ClientFileInfo> info; // TODO: Maybe não vai ser usado, ele quando quiser ver os outputs o faz request ao servidor e dá "print" no Menu
 
     public Client() throws IOException {
         this.name = "";
         this.password = "";
-        this.requests = new ArrayList<>();
         this.info = new ArrayList<>();
         this.socket = new Socket("localhost", 12345);
     }
@@ -29,7 +25,6 @@ public class Client {
     public Client(String username, String password) throws IOException {
         this.name = username;
         this.password = password;
-        this.requests = new ArrayList<>();
         this.info = new ArrayList<>();
         this.socket = new Socket("localhost", 12345);
     }
@@ -38,12 +33,16 @@ public class Client {
         return this.socket;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public String getName(){
+        return this.name;
     }
 
-    public ArrayList<String> getRequests() {
-        return requests;
+    public boolean passwordCorrect(String password){
+        return this.password.equals(password);
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public void addClientFileInfo(ClientFileInfo cfi) {
@@ -80,7 +79,7 @@ public class Client {
         // PrintWriter out = new PrintWriter(c.getSocket().getOutputStream(), true);
 
         String userInput;
-        while((userInput = in.readLine()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler
+        while((userInput = in.readLine()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler, quando clicar na opção de sair do Menu
 
         }
         c.getSocket().close();

@@ -7,7 +7,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,33 +14,28 @@ import java.util.Map;
 
 
 public class Menu {
-    private FileWriter writer = null;
+    private Client client; // Client que está a usar o Menu
+    private Clients clients; // HashMap<String,Client> dos clientes, não sei se tem/deve estar aqui,  só para conseguir obter o Client após fazer login/register
 
-    private String activeUser;
-
-    public void setActiveUser(String activeUser) {
-        this.activeUser = activeUser;
+    public void setActiveUser(String name) {
+        this.client = this.clients.getClient(name);
     }
 
-    public String getActiveUser() {
-        return activeUser;
+    public Client getClient() {
+        return this.client;
     }
 
     public Menu() throws IOException {
     }
 
-
     public void addClient(String username, String password) throws IOException {
-        this.clients.put(username,password);
-
-        writer.append(username+','+password+'\n');
-        writer.close();
+        this.client.regUser(username, password);
 
         setActiveUser(username);
     }
 
-    public Boolean existsClient(Client c, String username, String password) throws IOException {
-        if (c.hasUser(username,password) == true) {
+    public Boolean existsClient(String username, String password) throws IOException {
+        if (this.client.hasUser(username, password)) {
             return false;
         }
         //if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
@@ -52,7 +46,7 @@ public class Menu {
     }
 
 
-    private void loginPage(Client c, ClientHandler clientHandler) {
+    private void loginPage(Client c,ClientHandler clientHandler) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 150);
@@ -84,15 +78,19 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (!existsClient(username, password)) {
-                    try {
-                        addClient(username, password);
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
+                try {
+                    if (!existsClient(username, password)) {
+                        try {
+                            addClient(username, password);
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
                     }
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
 
-                mainMenuPage(c, clientHandler);
+                mainMenuPage(c,clientHandler);
                 frame.setVisible(false);
             }
         });
@@ -103,11 +101,15 @@ public class Menu {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
 
-                if (existsClient(username, password)) {
-                    mainMenuPage(c,clientHandler);
-                    frame.setVisible(false);
-                } else {
-                    JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
+                try {
+                    if (existsClient(username, password)) { // FIXME: Terá de receber um cliente também um client
+                        mainMenuPage(c,clientHandler);
+                        frame.setVisible(false);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
+                    }
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
             }
         });
@@ -253,7 +255,8 @@ public class Menu {
 
 
     public void deploy(Client c, ClientHandler clientHandler) throws IOException {
-        loginPage(c, clientHandler);
+        this.client = c;
+        loginPage(this.client, clientHandler);
     }
 
     /*

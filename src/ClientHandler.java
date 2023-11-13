@@ -16,14 +16,16 @@ public class ClientHandler extends Thread {
     ToDoFiles toDoFiles;
     DoneFiles doneFiles;
     ServerSlaves serverSlaves;
+    Clients clients;
 
 
-    ClientHandler(Client client, Socket socket, ToDoFiles toDoFiles, DoneFiles doneFiles, ServerSlaves serverSlaves) {
+    ClientHandler(Client client, Socket socket, ToDoFiles toDoFiles, DoneFiles doneFiles, ServerSlaves serverSlaves, Clients clients) {
         this.client = client;
         this.socket = socket;
         this.toDoFiles = toDoFiles;
         this.doneFiles = doneFiles;
         this.serverSlaves = serverSlaves;
+        this.clients = clients;
     }
 
     public void insertToDoFile(ClientFileInfo cfi){
@@ -45,7 +47,7 @@ public class ClientHandler extends Thread {
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
                     String[] login = resultString.split(","); // login[0] é username e login[1] é password
-                    if(checkLogin(login)){ // TODO: Definir public boolean checkLogin(String[] login), recebe o array login e verifica se essas informações estão na DB
+                    if(this.clients.checkLogin(login)){
                         out.println("OK");
                     } else {
                         out.println("Not correct");
@@ -55,10 +57,13 @@ public class ClientHandler extends Thread {
                 else if (data.startsWith("register:")){
                     String resultString = data.substring("register:".length());
                     String[] register = resultString.split(",");
-                    if(registerUser(register)){ // TODO: Definir public boolean registerUser(String[] register), recebe o array register e adiciona essas informações à DB e retorna true se não houver erros
+                    if (this.clients.nameExists(register[0])) { // register[0] é username e register[1] é password
+                        out.println("Name is already taken");
+                    }
+                    else {
+                        this.clients.addClient(register);
+                        // TODO: Adicionar à DB também
                         out.println("OK");
-                    } else {
-                        out.println("Error inserting in the DataBase");
                     }
                     out.flush();
                 }

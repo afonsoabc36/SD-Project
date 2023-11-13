@@ -12,35 +12,14 @@ import java.io.FileWriter;
 
 public class MainServer implements Runnable {
 
-    private FileWriter writer = null;
-
-    private HashMap<String,Client> clients;
-
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
+    private Clients clients; // Contém o HashMap<String,Client> de todos os clientes da DB
     private int nOfSlaves = 6;
 
 
 
-    public void allClients() throws IOException {
-        String dbPath = "./db/clientsDB.csv";
-        this.writer = new FileWriter(dbPath, true);
-        BufferedReader reader = new BufferedReader(new FileReader(dbPath));
-
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-
-            String[] parts = line.split(",");
-            if (parts.length >= 2) {
-                String key = parts[0].trim();
-                String value = parts[1].trim();
-                Client c = new Client(key,value);
-                clients.put(key, c);
-            }
-        }
-    }
 
     public void initializeSlaves(int N, int capacity) {
         HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
@@ -58,11 +37,12 @@ public class MainServer implements Runnable {
         try {
             int capacity = 10000000;
             initializeSlaves(nOfSlaves, capacity);
+
             ServerSocket ss = new ServerSocket(12345);
 
             while (true) { // Sempre listening para novas conexões
                 Socket socket = ss.accept(); // Establece a conexão com o cliente
-                new ClientHandler(new Client(), socket, toDoFiles, doneFiles, serverSlaves).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
+                new ClientHandler(new Client(), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
 
         } catch (IOException e) {
@@ -174,5 +154,77 @@ class ServerSlaves {
             // Maybe adicionar um counter e se o nº de vezes que acontece for igual ao nº de Slaves apresentar o Erro
             condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
         }
+    }
+}
+
+/*
+ * Classe que vai ser partilhada por todas as threads
+ * Contém um Map com todos os CLients inicializados que estavam na DB
+ */
+class Clients {
+    private FileWriter writer = null;
+    private HashMap<String, Client> clients;
+    private ReentrantLock lock;
+
+    Clients(FileWriter writer, BufferedReader reader) throws IOException {
+        allClients();
+        this.lock = new ReentrantLock();
+    }
+
+    public void allClients() throws IOException {
+        String dbPath = "./db/clientsDB.csv";
+        this.writer = new FileWriter(dbPath, true); // TODO: Maybe definir isto nos
+        BufferedReader reader = new BufferedReader(new FileReader(dbPath));
+
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+
+            String[] parts = line.split(",");
+            if (parts.length >= 2) {
+                String key = parts[0].trim();
+                String value = parts[1].trim();
+                Client c = new Client(key,value);
+                clients.put(key, c);
+            }
+        }
+    }
+
+    public Client getClient(String name){
+        try {
+            lock.lock();
+            return this.clients.get(name);
+        } finally { lock.unlock(); }
+    }
+
+    public void addClient(String[] register){
+        try{
+            lock.lock();
+            String res = "";
+            Client client = new Client(register[0], register[1]);
+            this.clients.put(client.getName(), client);
+            addClientDB(register);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally { lock.unlock(); }
+    }
+
+    private void addClientDB(String[] register) throws IOException {
+        writer.append(register[0]+','+register[1]+'\n');
+        writer.close();  // TODO: Não sei se se pode fechar já mas acho que sim
+    }
+
+    public boolean checkLogin(String[] login){
+        try{
+            lock.lock();
+            Client c = this.clients.get(login[0]);
+            return c.passwordCorrect(login[1]);
+        } finally { lock.unlock(); }
+    }
+
+    public boolean nameExists(String name){
+        Client c = null;
+        c = this.clients.get(name);
+        return c != null;
     }
 }
