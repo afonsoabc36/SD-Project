@@ -42,7 +42,7 @@ public class MainServer implements Runnable {
 
             while (true) { // Sempre listening para novas conexões
                 Socket socket = ss.accept(); // Establece a conexão com o cliente
-                new ClientHandler(new Client(), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
+                new ClientHandler(new Client(socket), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
 
         } catch (IOException e) {

@@ -40,7 +40,7 @@ public class ClientHandler extends Thread {
             menu.deploy(client,this);
 
             String data;
-            while ((data = in.readUTF()) != null){
+            while ((data = in.readUTF()) != null){ // TODO: Mudar para .equals("")
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
                     String[] login = resultString.split(","); // login[0] é username e login[1] é password

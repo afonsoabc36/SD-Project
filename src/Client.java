@@ -20,6 +20,13 @@ public class Client {
         this.in = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
     }
+    public Client(Socket socket) throws IOException {
+        this.name = "";
+        this.password = "";
+        this.socket = socket;
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
+    }
 
     public Client(String username, String password) throws IOException {
         this.name = username;
@@ -105,7 +112,7 @@ public class Client {
         Client c = new Client();
 
         String userInput;
-        while((userInput = c.in.readUTF()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler, quando clicar na opção de sair do Menu
+        while(!(userInput = c.in.readUTF()).equals("")) { // Até receber um endOfFile (Ctrl+D) do ClientHandler, quando clicar na opção de sair do Menu
 
         }
         c.getSocket().close();
