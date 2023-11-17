@@ -1,8 +1,5 @@
 import javax.swing.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,21 +9,32 @@ import java.util.HashMap;
 public class Client {
     private String name;
     protected String password;
-    private Socket socket;
-    private ArrayList<ClientFileInfo> info; // TODO: Maybe não vai ser usado, ele quando quiser ver os outputs o faz request ao servidor e dá "print" no Menu
+    private final Socket socket;
+    private final DataInputStream in;
+    private final DataOutputStream out;
 
     public Client() throws IOException {
         this.name = "";
         this.password = "";
-        this.info = new ArrayList<>();
         this.socket = new Socket("localhost", 12345);
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
     }
 
     public Client(String username, String password) throws IOException {
         this.name = username;
         this.password = password;
-        this.info = new ArrayList<>();
         this.socket = new Socket("localhost", 12345);
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
+    }
+
+    public Client(String username, String password, Socket socket) throws IOException {
+        this.name = username;
+        this.password = password;
+        this.socket = socket;
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
     }
 
     public Socket getSocket(){
@@ -45,41 +53,59 @@ public class Client {
         this.name = name;
     }
 
-    public void addClientFileInfo(ClientFileInfo cfi) {
-        this.info.add(cfi);
-    }
-
     public Boolean hasUser(String username, String password) throws IOException {
-        BufferedReader in = new BufferedReader(new InputStreamReader(this.getSocket().getInputStream()));
-        PrintWriter out = new PrintWriter(this.getSocket().getOutputStream(), true);
-        
-        out.println("login:"+username+","+password);
+        out.writeUTF("login:"+username+","+password);
         out.flush();
         
-        String response = in.readLine();
+        String response = in.readUTF();
 
         return response.equals("OK");
     }
 
-    public Boolean regUser(String username, String password) throws IOException {
-        BufferedReader in = new BufferedReader(new InputStreamReader(this.getSocket().getInputStream()));
-        PrintWriter out = new PrintWriter(this.getSocket().getOutputStream(), true);
+    public void serialize(DataOutputStream out) throws IOException{
+        out.writeUTF(this.name);
+        out.writeUTF(this.password);
+        String remoteIpAddress = socket.getInetAddress().getHostAddress();
+        int remotePort = socket.getPort();
+        out.writeUTF(remoteIpAddress);
+        out.writeInt(remotePort);
+    }
 
-        out.println("register:"+username+","+password);
+    public static Client deserialize(DataInputStream in) throws IOException {
+        String name = in.readUTF();
+        String password = in.readUTF();
+        String remoteIpAddress = in.readUTF();
+        int remotePort = in.readInt();
+
+        return new Client(name, password, new Socket(remoteIpAddress, remotePort));
+    }
+
+    public Boolean regUser(String username, String password) throws IOException {
+        out.writeUTF("register:"+username+","+password);
         out.flush();
 
-        String response = in.readLine();
+        String response = in.readUTF();
+
+        return response.equals("OK");
+    }
+
+    public Boolean sendCode(String fileURL) throws IOException {
+        ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
+
+        out.writeUTF("URL"); // Header
+        cfi.serialize(out);
+        out.flush();
+
+        String response = in.readUTF();
 
         return response.equals("OK");
     }
 
     public static void main(String[] args) throws IOException {
         Client c = new Client();
-        BufferedReader in = new BufferedReader(new InputStreamReader(c.getSocket().getInputStream()));
-        // PrintWriter out = new PrintWriter(c.getSocket().getOutputStream(), true);
 
         String userInput;
-        while((userInput = in.readLine()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler, quando clicar na opção de sair do Menu
+        while((userInput = c.in.readUTF()) != null) { // Até receber um endOfFile (Ctrl+D) do ClientHandler, quando clicar na opção de sair do Menu
 
         }
         c.getSocket().close();

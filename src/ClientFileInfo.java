@@ -1,4 +1,8 @@
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class ClientFileInfo {
     private Client client;
@@ -16,6 +20,22 @@ public class ClientFileInfo {
         this.client = client;
         this.fileURL = fileURL;
         this.dateTime = dateTime;
+    }
+
+    public void serialize(DataOutputStream out) throws IOException {
+        this.client.serialize(out);
+        out.writeUTF(this.fileURL);
+        String time = this.dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        out.writeUTF(time);
+    }
+
+    public static ClientFileInfo deserialize(DataInputStream in) throws IOException {
+        Client client = Client.deserialize(in);
+        String fileURL = in.readUTF();
+        String dateTimeAux = in.readUTF();
+        LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        return new ClientFileInfo(client, fileURL, dateTime);
     }
 
     public Client getClient() {
