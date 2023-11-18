@@ -36,17 +36,17 @@ public class Menu {
 
     public Boolean existsClient(String username, String password) throws IOException {
         if (this.client.hasUser(username, password)) {
-            return false;
+            return true;
         }
         //if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
         //    return false;
         //}
         setActiveUser(username);
-        return true;
+        return false;
     }
 
 
-    private void loginPage(Client c,ClientHandler clientHandler) {
+    private void loginPage(Client c) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 150);
@@ -90,7 +90,7 @@ public class Menu {
                     throw new RuntimeException(ex);
                 }
 
-                mainMenuPage(c,clientHandler);
+                mainMenuPage(c);
                 frame.setVisible(false);
             }
         });
@@ -102,8 +102,8 @@ public class Menu {
                 String password = new String(passwordField.getPassword());
 
                 try {
-                    if (existsClient(username, password)) { // FIXME: Terá de receber um cliente também um client
-                        mainMenuPage(c,clientHandler);
+                    if (existsClient(username, password)) {
+                        mainMenuPage(c);
                         frame.setVisible(false);
                     } else {
                         JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
@@ -119,7 +119,7 @@ public class Menu {
 
 
 
-    private static void mainMenuPage(Client c, ClientHandler clientHandler) {
+    private static void mainMenuPage(Client c) {
         JFrame frame = new JFrame("Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -139,7 +139,7 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                runCodePage(c,clientHandler);
+                runCodePage(c);
                 frame.setVisible(false);
             }
         });
@@ -147,7 +147,7 @@ public class Menu {
         seeOutputs.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                outputsPage(c, clientHandler);
+                outputsPage(c);
                 frame.setVisible(false);
             }
         });
@@ -155,7 +155,7 @@ public class Menu {
         frame.setVisible(true);
     }
 
-    private static void runCodePage(Client c, ClientHandler clientHandler) {
+    private static void runCodePage(Client c) {
         JFrame frame = new JFrame("Run Code");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -187,8 +187,11 @@ public class Menu {
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientFileInfo cfi = new ClientFileInfo(c,urlField.getText());
-                clientHandler.insertToDoFile(cfi); // Insere o ficheiro na lista de ficheiros a correr
+                try {
+                    c.sendCode(String.valueOf(urlField));
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
                 frame.setVisible(false);
             }
         });
@@ -197,7 +200,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(c,clientHandler);
+                mainMenuPage(c);
                 frame.setVisible(false);
             }
         });
@@ -207,7 +210,7 @@ public class Menu {
     }
 
 
-    private static void outputsPage(Client c, ClientHandler clientHandler) { //TODO: Incompleto, "pseudocodigo"
+    private static void outputsPage(Client c) { //TODO: Incompleto, "pseudocodigo"
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -221,7 +224,7 @@ public class Menu {
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mainMenuPage(c, clientHandler);
+                mainMenuPage(c);
                 frame.setVisible(false);
             }
         });
@@ -254,9 +257,9 @@ public class Menu {
     }
 
 
-    public void deploy(Client c, ClientHandler clientHandler) throws IOException {
+    public void deploy(Client c) throws IOException {
         this.client = c;
-        loginPage(this.client, clientHandler);
+        loginPage(this.client);
     }
 
     /*

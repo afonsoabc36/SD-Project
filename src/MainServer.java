@@ -15,10 +15,16 @@ public class MainServer implements Runnable {
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
-    private Clients clients; // Contém o HashMap<String,Client> de todos os clientes da DB
+    private Clients clients;
     private int nOfSlaves = 6;
 
-
+    public MainServer() throws IOException {
+        this.doneFiles = new DoneFiles();
+        this.toDoFiles = new ToDoFiles();
+        this.clients = new Clients();
+        int capacity = 10000000;
+        initializeSlaves(nOfSlaves, capacity);
+    }
 
 
     public void initializeSlaves(int N, int capacity) {
@@ -35,11 +41,9 @@ public class MainServer implements Runnable {
     @Override
     public void run() {
         try {
-            int capacity = 10000000;
-            initializeSlaves(nOfSlaves, capacity);
 
             ServerSocket ss = new ServerSocket(12345);
-
+            System.out.println("Listening for connections on port " + ss.getLocalPort());
             while (true) { // Sempre listening para novas conexões
                 Socket socket = ss.accept(); // Establece a conexão com o cliente
                 new ClientHandler(new Client(socket), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
@@ -50,7 +54,7 @@ public class MainServer implements Runnable {
         }
     }
     
-    public static void main(String[] args){
+    public static void main(String[] args) throws IOException {
         new MainServer().run();
     }
 
@@ -71,6 +75,12 @@ class DoneFiles {
         this.doneFiles = doneFiles;
         this.lock = new ReentrantLock();
     }
+
+    DoneFiles(){
+        this.doneFiles = new ArrayList<ClientFileInfo>();
+        this.lock = new ReentrantLock();
+    }
+
 
     public void insertDoneFile(ClientFileInfo cfl){
         try {
@@ -103,6 +113,11 @@ class ToDoFiles {
 
     ToDoFiles(ArrayList<ClientFileInfo> toDoFiles){
         this.toDoFiles = toDoFiles;
+        this.lock = new ReentrantLock();
+    }
+
+    ToDoFiles(){
+        this.toDoFiles = new ArrayList<ClientFileInfo>();
         this.lock = new ReentrantLock();
     }
 
@@ -166,19 +181,20 @@ class Clients {
     private HashMap<String, Client> clients;
     private ReentrantLock lock;
 
-    Clients(FileWriter writer, BufferedReader reader) throws IOException {
+    Clients() throws IOException {
+        this.clients = new HashMap<String,Client>();
         allClients();
         this.lock = new ReentrantLock();
     }
 
     public void allClients() throws IOException {
         String dbPath = "./db/clientsDB.csv";
-        this.writer = new FileWriter(dbPath, true); // TODO: Maybe definir isto nos
+        this.writer = new FileWriter(dbPath, true);
         BufferedReader reader = new BufferedReader(new FileReader(dbPath));
 
         String line;
 
-        while ((line = reader.readLine()) != null) {
+        while ((line = reader.readLine()) != null) { // Ele está a ler o cabeçalho, eliminar isso
 
             String[] parts = line.split(",");
             if (parts.length >= 2) {
@@ -188,6 +204,7 @@ class Clients {
                 clients.put(key, c);
             }
         }
+
     }
 
     public Client getClient(String name){
@@ -200,8 +217,7 @@ class Clients {
     public void addClient(String[] register){
         try{
             lock.lock();
-            String res = "";
-            Client client = new Client(register[0], register[1]);
+            Client client = new Client(register[0], register[1]); // TODO: Talvez passar o socket também
             this.clients.put(client.getName(), client);
             addClientDB(register);
         } catch (IOException e) {

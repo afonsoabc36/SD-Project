@@ -31,23 +31,28 @@ public class ClientHandler extends Thread {
 
     @Override
     public void run() {
+        System.out.println("Running");
+        System.out.println("Socket port: " + this.socket.getPort());
+        System.out.println("Socket address: " + this.socket.getLocalAddress());
 
         try {
-            DataInputStream in = new DataInputStream(socket.getInputStream());
-            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-
-            Menu menu = new Menu();
-            menu.deploy(client,this);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream());
+            DataInputStream dis = new DataInputStream(socket.getInputStream());
+            DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); // Não sei se vai ser utilizado
 
             String data;
-            while ((data = in.readUTF()) != null){ // TODO: Mudar para .equals("")
+            System.out.println("Here");
+            while ((data = in.readLine()) != null){
+                System.out.println("Data:"+data); // Não recebe nada, não chega aqui
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
+                    System.out.println(resultString);
                     String[] login = resultString.split(","); // login[0] é username e login[1] é password
                     if(this.clients.checkLogin(login)){
-                        out.writeUTF("OK");
+                        out.println("OK");
                     } else {
-                        out.writeUTF("Not correct");
+                        out.println("Not correct");
                     }
                     out.flush();
                 }
@@ -55,22 +60,24 @@ public class ClientHandler extends Thread {
                     String resultString = data.substring("register:".length());
                     String[] register = resultString.split(",");
                     if (this.clients.nameExists(register[0])) { // register[0] é username e register[1] é password
-                        out.writeUTF("Name is already taken");
+                        out.println("Name is already taken");
                     }
                     else {
                         this.clients.addClient(register);
                         // TODO: Adicionar à DB também
-                        out.writeUTF("OK");
+                        out.println("OK");
                     }
                     out.flush();
                 }
                 else if (data.equals("URL")){
-                    ClientFileInfo cfi = ClientFileInfo.deserialize(in);
+                    ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
 
                     this.toDoFiles.insertToDoFile(cfi);
 
-                    out.writeUTF("OK");
+                    out.println("OK");
                     out.flush();
+                } else {
+                    out.println("general response");
                 }
             }
         } catch (IOException e) {
