@@ -234,6 +234,7 @@ class Clients {
         try{
             lock.lock();
             Client c = this.clients.get(login[0]);
+            if (c == null) return false;
             return c.passwordCorrect(login[1]);
         } finally { lock.unlock(); }
     }

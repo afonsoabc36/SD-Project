@@ -28,21 +28,12 @@ public class Menu {
     public Menu() throws IOException {
     }
 
-    public void addClient(String username, String password) throws IOException {
-        this.client.regUser(username, password);
-
-        setActiveUser(username);
+    public boolean addClient(String username, String password) throws IOException {
+        return this.client.regUser(username, password);
     }
 
     public Boolean existsClient(String username, String password) throws IOException {
-        if (this.client.hasUser(username, password)) {
-            return true;
-        }
-        //if (this.clients.get(username)==null || !this.clients.get(username).equals(password)) {
-        //    return false;
-        //}
-        setActiveUser(username);
-        return false;
+        return this.client.hasUser(username, password);
     }
 
 
@@ -72,6 +63,7 @@ public class Menu {
         frame.add(panel, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);
 
+        // Register Button
         registerButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -81,10 +73,14 @@ public class Menu {
                 try {
                     if (!existsClient(username, password)) {
                         try {
-                            addClient(username, password);
+                            if(!addClient(username, password)){
+                                //TODO: Warning a dizer que não conseguiu fazer o registo
+                            }
                         } catch (IOException ex) {
                             throw new RuntimeException(ex);
                         }
+                    } else {
+                        // TODO: Warning a dizer que esse username já existe
                     }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
@@ -95,6 +91,7 @@ public class Menu {
             }
         });
 
+        // Login Button
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -117,8 +114,6 @@ public class Menu {
         frame.setVisible(true);
     }
 
-
-
     private static void mainMenuPage(Client c) {
         JFrame frame = new JFrame("Main Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -136,6 +131,7 @@ public class Menu {
 
         frame.add(panel, BorderLayout.CENTER);
 
+        // Run Code Button
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -144,6 +140,7 @@ public class Menu {
             }
         });
 
+        // See Outputs Button
         seeOutputs.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -183,7 +180,7 @@ public class Menu {
 
         frame.add(panel, BorderLayout.CENTER);
 
-        // Pressionar o botão de Run Code
+        // Run Code Button
         runCode.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -196,7 +193,7 @@ public class Menu {
             }
         });
 
-        // Pressionar o botão para voltar à página anterior
+        // Go Back Button
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -221,6 +218,7 @@ public class Menu {
         JButton goBack = new JButton("<-");
         goBack.add(goBack, BorderLayout.WEST);
 
+        // Go Back Button
         goBack.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -256,17 +254,9 @@ public class Menu {
         frame.setVisible(true);
     }
 
-
     public void deploy(Client c) throws IOException {
         this.client = c;
         loginPage(this.client);
     }
 
-    /*
-    public static void main(String[] args) throws IOException {
-        Menu m = new Menu();
-        Client c = new Client();
-        loginPage(m,c);
-    }
-    */
 }

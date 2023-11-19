@@ -135,7 +135,9 @@ public class Client {
         Menu menu = new Menu();
         menu.deploy(c);
 
-        while(true){}
+        while(true){
+            // TODO: Fazer algo para que o cliente fique ligado,não sei bem o quê, maybe meter a criação e o deploy do menu aqui
+        }
 
     }
 }

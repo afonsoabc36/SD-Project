@@ -71,13 +71,13 @@ public class ClientHandler extends Thread {
                 }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
-
                     this.toDoFiles.insertToDoFile(cfi);
+                    // Função para fazer com que o código seja enviado para os Slaves para ser corrido
 
                     out.println("OK");
                     out.flush();
                 } else {
-                    out.println("general response");
+                    out.println("general response"); // Não deve ser preciso, apenas para debugging
                 }
             }
         } catch (IOException e) {
