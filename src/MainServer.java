@@ -156,18 +156,31 @@ class ServerSlaves {
         this.lock = new ReentrantLock();
         this.condition = lock.newCondition();
     }
+
+    public int getNumberSlaves(){
+        try{
+            lock.lock();
+            return this.serverSlaves.size();
+        } finally { lock.unlock(); }
+    }
+
+    // Função que retorna o nome do primeiro ServerSlave livre, se o ficheiro for demasiado grande retorna "Size capacity exceeded"
     public String getFreeServer(int space) throws InterruptedException {
 
         while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
+            int counter = 0;
             for (ServerSlave slave : serverSlaves.values()) {
-                if (slave.isFree() && slave.getMaxCapacity() > space) {
-                    return slave.getName(); // TODO: Maybe dar return logo do ServerSlave
+                if (slave.isFree()) {
+                    if (slave.getMaxCapacity() > space) {
+                        return slave.getName(); // TODO: Maybe dar return logo do ServerSlave
+                    } else { counter++; }
                 }
             }
-            // TODO: Adicionar aqui uma verificação
-            // Verificação: Se não consegui correr o código pelo mesmo ocupar muito espaço, em todos os servidores, apresentar um erro ao Cliente
-            // Maybe adicionar um counter e se o nº de vezes que acontece for igual ao nº de Slaves apresentar o Erro
-            condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
+            if (counter == getNumberSlaves()) {
+                return "Size capacity exceeded";
+            } else {
+                condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
+            }
         }
     }
 }
@@ -227,7 +240,7 @@ class Clients {
 
     private void addClientDB(String[] register) throws IOException {
         writer.append(register[0]+','+register[1]+'\n');
-        writer.close();  // TODO: Não sei se se pode fechar já mas acho que sim
+        //writer.close();  // TODO: Não se pode fechar, arranjar um sítio para fechar
     }
 
     public boolean checkLogin(String[] login){

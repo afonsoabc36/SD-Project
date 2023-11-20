@@ -74,7 +74,10 @@ public class Menu {
                     if (!existsClient(username, password)) {
                         try {
                             if(!addClient(username, password)){
-                                //TODO: Warning a dizer que não conseguiu fazer o registo
+                                JOptionPane.showMessageDialog(frame, "Register failed. Please change your username.");
+                            } else {
+                                mainMenuPage(c);
+                                frame.setVisible(false);
                             }
                         } catch (IOException ex) {
                             throw new RuntimeException(ex);
@@ -85,9 +88,6 @@ public class Menu {
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
-
-                mainMenuPage(c);
-                frame.setVisible(false);
             }
         });
 
