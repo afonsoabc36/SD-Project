@@ -100,33 +100,59 @@ public class Client {
         return new Client(name, password, new Socket(remoteIpAddress, remotePort));
     }
 
-    public Boolean hasUser(String username, String password) throws IOException {
-        this.out.println("login:"+username+","+password);
-        this.out.flush();
+    public int hasUser(String username, String password) throws IOException {
+        out.println("login:"+username+","+password);
+        out.flush();
 
-        String response = this.in.readLine();
-        return response.equals("OK");
+        String response = in.readLine();
+        switch (response) {
+            case "OK" -> {
+                return 0;
+            }
+            case "Username does not exist" -> {
+                return 1;
+            }
+            case "Password incorrect" -> {
+                return 2;
+            }
+        }
+        return -1; // Caso geral, não deve chegar aqui
     }
 
-    public Boolean regUser(String username, String password) throws IOException {
+    public int regUser(String username, String password) throws IOException {
         out.println("register:"+username+","+password);
         out.flush();
 
         String response = in.readLine();
-
-        return response.equals("OK");
+        switch (response) {
+            case "OK" -> {
+                return 0;
+            }
+            case "Name is already taken" -> {
+                return 1;
+            }
+        }
+        return -1; // Caso geral, não deve chegar aqui
     }
 
-    public Boolean sendCode(String fileURL) throws IOException {
+    public int sendCode(String fileURL) throws IOException {
         ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
 
         out.println("URL"); // Header
         out.flush();
-        cfi.serialize(dos);
+        cfi.serialize(dos); // Conteúdo
+        dos.flush();
 
         String response = in.readLine();
-
-        return response.equals("OK");
+        switch (response) {
+            case "OK" -> {
+                return 0;
+            }
+            case "Ficheiro não encontrado" -> {
+                return 1;
+            }
+        }
+        return -1; // Caso geral, não deve chegar aqui
     }
 
     public static void main(String[] args) throws IOException {

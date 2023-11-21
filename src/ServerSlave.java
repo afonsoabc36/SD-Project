@@ -14,12 +14,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ServerSlave implements Runnable {
-    ReentrantLock lock;
-    Condition condition;
+    ReentrantLock lock; // TODO: Verificar se vai ser preciso, a class ServerSlaves (HashMap) já tem locks
+    Condition condition; // TODO: Verificar se vai ser preciso, a class ServerSlaves (HashMap) já tem locks
     Socket socket;
     String name;
-    boolean free; // True if the server is not executing code
-    int maxCapacity; // The maximum number of bytes that the code can have in order to be executed in this server
+    boolean free; // True se o servidor não estiver a correr código
+    int maxCapacity; // Número máximo de bytes que o código pode ter para ser executado por este servidor
 
     public ServerSlave(int maxCapacity, String name) {
         this.name = name;
@@ -56,8 +56,8 @@ public class ServerSlave implements Runnable {
 
             byte[] code = new byte[this.maxCapacity];
 
-            while (true) { // Infinite loop to keep listening
-                int bytesRead = in.read(code);
+            while (true) { // Loop infinito para ficar à espera de código para correr
+                int bytesRead = in.read(code); // Mudar para readLine, enviar um header e depois dar Serialize do clienFileInfo, como no ClientHandler linha 76 "else if (data.equals("URL")){"
                 if (bytesRead == -1) {
                     // Nothing to read
                     break;
@@ -68,16 +68,16 @@ public class ServerSlave implements Runnable {
 
                 try {
                     this.lock.lock();
-                    this.free = false; // Server is now occupied
-                    byte[] output = JobFunction.execute(codeData); // Executes the code and stores the output
+                    this.free = false; // Serveridor está ocupado
+                    byte[] output = JobFunction.execute(codeData); // Executa o código e guarda o output
 
-                    // Send output back to the server
+                    // Send output back to the server, TODO: Podemos criar uma classe ClientFileOutput e dar serialize dela
                     out.write(output);
                     out.flush();
                 } finally {
-                    this.free = true; // Server is now free
+                    this.free = true; // Servidor está livre
                     this.lock.unlock();
-                    this.condition.signalAll(); // Wakes up the thread that might be waiting for a ServerSlave
+                    this.condition.signalAll(); // Acorda threads que possam estar à espera de um slave para correr código
                 }
             }
         } catch (IOException e) {

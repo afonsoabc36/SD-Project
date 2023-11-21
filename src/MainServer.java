@@ -206,8 +206,12 @@ class Clients {
         BufferedReader reader = new BufferedReader(new FileReader(dbPath));
 
         String line;
-
-        while ((line = reader.readLine()) != null) { // Ele está a ler o cabeçalho, eliminar isso
+        boolean header = true;
+        while ((line = reader.readLine()) != null) {
+            if (header) { // Para que ele ignore o cabeçalho, TODO: Pode haver maneiras melhores de o fazer para que ele não esteja a verificar o valor de header em casa iteração
+                header = false;
+                continue;
+            }
 
             String[] parts = line.split(",");
             if (parts.length >= 2) {
@@ -217,7 +221,6 @@ class Clients {
                 clients.put(key, c);
             }
         }
-
     }
 
     public Client getClient(String name){
@@ -231,8 +234,8 @@ class Clients {
         try{
             lock.lock();
             Client client = new Client(register[0], register[1]); // TODO: Talvez passar o socket também
-            this.clients.put(client.getName(), client);
-            addClientDB(register);
+            this.clients.put(client.getName(), client); // Adiciona ao HashMap
+            addClientDB(register); // Adiciona à DB
         } catch (IOException e) {
             e.printStackTrace();
         } finally { lock.unlock(); }
@@ -240,15 +243,18 @@ class Clients {
 
     private void addClientDB(String[] register) throws IOException {
         writer.append(register[0]+','+register[1]+'\n');
-        //writer.close();  // TODO: Não se pode fechar, arranjar um sítio para fechar
+        //writer.close();  // TODO: Não se pode fechar, arranjar um sítio para fechar quando se der close ao server
     }
 
-    public boolean checkLogin(String[] login){
+    public int checkLogin(String[] login) {
         try{
             lock.lock();
             Client c = this.clients.get(login[0]);
-            if (c == null) return false;
-            return c.passwordCorrect(login[1]);
+            if (c == null) return 1; // Username não existe
+            if (c.passwordCorrect(login[1])) {
+                return 0; // Credenciais corretas
+            } else { return 2; } // Password incorreta
+
         } finally { lock.unlock(); }
     }
 

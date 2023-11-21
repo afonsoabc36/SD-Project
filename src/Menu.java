@@ -28,11 +28,11 @@ public class Menu {
     public Menu() throws IOException {
     }
 
-    public boolean addClient(String username, String password) throws IOException {
+    public int addClient(String username, String password) throws IOException {
         return this.client.regUser(username, password);
     }
 
-    public Boolean existsClient(String username, String password) throws IOException {
+    public int existsClient(String username, String password) throws IOException {
         return this.client.hasUser(username, password);
     }
 
@@ -71,9 +71,9 @@ public class Menu {
                 String password = new String(passwordField.getPassword());
 
                 try {
-                    if (!existsClient(username, password)) {
+                    if (existsClient(username, password) == 1) { // Se não existir um cliente com esse username
                         try {
-                            if(!addClient(username, password)){
+                            if(addClient(username, password) != 0){ // Register falhou TODO: Verificar, acho que não é preciso esta verificação, já se faz isso antes
                                 JOptionPane.showMessageDialog(frame, "Register failed. Please change your username.");
                             } else {
                                 mainMenuPage(c);
@@ -83,7 +83,7 @@ public class Menu {
                             throw new RuntimeException(ex);
                         }
                     } else {
-                        // TODO: Warning a dizer que esse username já existe
+                        JOptionPane.showMessageDialog(frame, "Account " + username + " already exists. Please change your username or log in.");
                     }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
@@ -99,11 +99,13 @@ public class Menu {
                 String password = new String(passwordField.getPassword());
 
                 try {
-                    if (existsClient(username, password)) {
+                    if (existsClient(username, password) == 0) { // Dados do login corretos
                         mainMenuPage(c);
                         frame.setVisible(false);
-                    } else {
-                        JOptionPane.showMessageDialog(frame, "Login failed. Please check your credentials.");
+                    } else if (existsClient(username, password) == 1){ // Username não existe
+                        JOptionPane.showMessageDialog(frame, "Username " + username + " does not exist. Please change it or register");
+                    } else if (existsClient(username, password) == 2){ // Password incorreta
+                        JOptionPane.showMessageDialog(frame, "Password incorrect. Please try agaain");
                     }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
@@ -185,11 +187,15 @@ public class Menu {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    c.sendCode(String.valueOf(urlField));
+                    if (c.sendCode(String.valueOf(urlField)) == 1){
+                        JOptionPane.showMessageDialog(frame, "URL is not valid. Please try agaain");
+                    } else {
+                        // TODO: Add message to know it worked ok
+                        frame.setVisible(false);
+                    }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
-                frame.setVisible(false);
             }
         });
 

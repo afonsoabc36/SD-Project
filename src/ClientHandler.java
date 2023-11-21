@@ -3,6 +3,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashMap;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /*
 * Classe/Thread que vai ser criada para cada cliente que se conecte ao MainServer
@@ -42,39 +46,45 @@ public class ClientHandler extends Thread {
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); // Não sei se vai ser utilizado
 
             String data;
-            System.out.println("Here");
             while ((data = in.readLine()) != null){
-                System.out.println("Data:"+data); // Não recebe nada, não chega aqui
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
-                    System.out.println(resultString);
                     String[] login = resultString.split(","); // login[0] é username e login[1] é password
-                    if(this.clients.checkLogin(login)){
+
+                    int loginResult = this.clients.checkLogin(login);
+                    if(loginResult == 0){
                         out.println("OK");
+                    } else if (loginResult == 1){
+                        out.println("Username does not exist");
                     } else {
-                        out.println("Not correct");
+                        out.println("Password incorrect");
                     }
                     out.flush();
                 }
                 else if (data.startsWith("register:")){
                     String resultString = data.substring("register:".length());
                     String[] register = resultString.split(",");
+
                     if (this.clients.nameExists(register[0])) { // register[0] é username e register[1] é password
                         out.println("Name is already taken");
-                    }
-                    else {
+                    } else {
                         this.clients.addClient(register);
-                        // TODO: Adicionar à DB também
                         out.println("OK");
                     }
                     out.flush();
                 }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
-                    this.toDoFiles.insertToDoFile(cfi);
-                    // Função para fazer com que o código seja enviado para os Slaves para ser corrido
 
-                    out.println("OK");
+                    // Verificar se o ficheiro existe
+                    if (cfi.fileExists()) {
+                        this.toDoFiles.insertToDoFile(cfi);
+                        // TODO: Função para fazer com que o código seja enviado para os Slaves para ser corrido
+                        out.println("OK");
+                    } else {
+                        out.println("Ficheiro não encontrado");
+                    }
+
                     out.flush();
                 } else {
                     out.println("general response"); // Não deve ser preciso, apenas para debugging
