@@ -78,9 +78,42 @@ public class ClientHandler extends Thread {
 
                     // Verificar se o ficheiro existe
                     if (cfi.fileExists()) {
-                        this.toDoFiles.insertToDoFile(cfi);
-                        // TODO: Função para fazer com que o código seja enviado para os Slaves para ser corrido
-                        out.println("OK");
+                        out.println("OK"); // Client a partir daqui pode ir fazer outras merdas
+
+
+                        Thread thread = new Thread(() -> {
+                            try {
+                                this.toDoFiles.insertToDoFile(cfi);
+                                Path filePath = Paths.get(cfi.getFileURL());
+                                byte[] code = Files.readAllBytes(filePath);
+
+                                // server = getFreeServer();
+                                // if no server await();
+                                // dos = newDataOutputStream(server.getSocket().getOutputStream());
+                                // dis = newDataInputStream(server.getSocket().getInputStream());
+                                // dos.writeInt(code.length);
+                                // dos.write(code);
+                                // dos.flush();
+                                // size = dis.readInt(); // size of array
+                                // output = dis.readNBytes(size);
+                                // ClientFileInfo cfiOutput = new ClientFileInfo(output);
+                                //this.doneFiles.insertDoneFile(cfiOutput);
+                                //
+
+
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+
+                        // Criar uma thread que faça o pedido ao ServerSlave e que fique à espera da resposta e que a meta nos DoneFiles
+                        //out.send(code);
+                        //byte[] output = in.read(); // Bloqueado aqui
+                        // ... Inserir em certa pasta de certa cena para guardar tipo BD
+
+                            // Main setrver tem o ficheiro, cliente -> url(bytes) -> mainServer (cliente )
+
+
                     } else {
                         out.println("Ficheiro não encontrado");
                     }

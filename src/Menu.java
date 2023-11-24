@@ -1,5 +1,5 @@
-import javax.annotation.processing.SupportedSourceVersion;
 import javax.swing.*;
+import javax.annotation.processing.SupportedSourceVersion;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -187,10 +187,12 @@ public class Menu {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    if (c.sendCode(String.valueOf(urlField)) == 1){
+                    if (c.sendCode(String.valueOf(urlField), frame) == 1){ //passsar return value a array, ele aqui compara a primeira, va segunda e var5
                         JOptionPane.showMessageDialog(frame, "URL is not valid. Please try agaain");
                     } else {
                         // TODO: Add message to know it worked ok
+
+                        //JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
                         frame.setVisible(false);
                     }
                 } catch (IOException ex) {

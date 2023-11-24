@@ -12,6 +12,9 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class ServerSlave implements Runnable {
     ReentrantLock lock; // TODO: Verificar se vai ser preciso, a class ServerSlaves (HashMap) já tem locks
@@ -40,13 +43,18 @@ public class ServerSlave implements Runnable {
     }
 
     public boolean isFree() {
-        return free;
+        try {
+            this.lock.lock();
+            return free;
+        } finally {
+            lock.unlock();
+        }
+
     }
 
     public int getMaxCapacity() {
         return this.maxCapacity;
     }
-
 
     @Override
     public void run() {
