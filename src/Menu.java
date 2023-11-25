@@ -1,16 +1,17 @@
 import javax.swing.*;
-import javax.annotation.processing.SupportedSourceVersion;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.io.File;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.processing.SupportedSourceVersion;
 
 
 public class Menu {
@@ -163,21 +164,29 @@ public class Menu {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
 
-        JLabel urlLabel = new JLabel("Url Label");
-        JTextField urlField = new JTextField();
-        JButton runCode = new JButton("Run Code");
         JButton goBack = new JButton("<-");
+        JLabel urlLabel = new JLabel("URL Label ↓");
+        JTextField urlField = new JTextField();
+        JButton chooseFile = new JButton("Choose File");
+        JButton runCode = new JButton("Run Code");
 
         panel.add(goBack, BorderLayout.WEST);
 
-        JPanel centerPanel = new JPanel(); // Create a new panel for center alignment
-        centerPanel.setLayout(new GridLayout(1, 1));
-        centerPanel.add(urlLabel);
-        centerPanel.add(urlField);
-        centerPanel.add(new JLabel()); // Empty label for spacing
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new GridLayout(1, 2)); // One row, two columns
+
+        // Painel URL com o Label e com o Field para input
+        JPanel urlPanel = new JPanel(new GridLayout(2, 1));
+        urlPanel.add(urlLabel);
+        urlPanel.add(urlField);
+
+        centerPanel.add(urlPanel);
+        centerPanel.add(chooseFile);
         centerPanel.add(runCode);
 
-        // Set the center panel in the center of the panel
+        // Alinha o texto do Label URL Label
+        urlLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
         panel.add(centerPanel, BorderLayout.CENTER);
 
         frame.add(panel, BorderLayout.CENTER);
@@ -187,16 +196,36 @@ public class Menu {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    if (c.sendCode(String.valueOf(urlField), frame) == 1){ //passsar return value a array, ele aqui compara a primeira, va segunda e var5
-                        JOptionPane.showMessageDialog(frame, "URL is not valid. Please try agaain");
-                    } else {
-                        // TODO: Add message to know it worked ok
-
-                        //JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
-                        frame.setVisible(false);
+                    if(String.valueOf(urlField) == null) { // TODO: Verificar se é == null ou == ""
+                        JOptionPane.showMessageDialog(frame, "URL is empty. Please try again");
+                    }
+                    else {
+                        int[] result = c.sendCode(String.valueOf(urlField));
+                        if (result[0] == 1) { // Ficheiro não encontrado
+                            JOptionPane.showMessageDialog(frame, "URL is not valid. Please try again");
+                        } else if (result[0] == 0){
+                            int var5 = result[1];
+                            JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
+                            frame.setVisible(false);
+                        } else { // Caso geral, erro desconhecido
+                            JOptionPane.showMessageDialog(frame, "Error");
+                        }
                     }
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
+                }
+            }
+        });
+
+        // Choose File Button
+        chooseFile.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser chooser = new JFileChooser();
+                int result = chooser.showOpenDialog(frame);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = chooser.getSelectedFile();
+                    urlField.setText(selectedFile.getAbsolutePath());
                 }
             }
         });

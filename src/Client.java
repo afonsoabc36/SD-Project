@@ -138,7 +138,7 @@ public class Client {
         return -1; // Caso geral, não deve chegar aqui
     }
 
-    public int sendCode(String fileURL, JFrame frame) throws IOException {
+    public int[] sendCode(String fileURL) throws IOException {
         ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
 
         out.println("URL"); // Header
@@ -146,26 +146,28 @@ public class Client {
         cfi.serialize(dos); // Conteúdo
         dos.flush();
 
+        int[] result = new int[2];
+        result[0] = -1; // Caso geral
         String response = in.readLine();
         switch (response) {
             case "OK" -> {
                 Path filePath = Paths.get(cfi.getFileURL());
                 byte[] code = Files.readAllBytes(filePath);
-                printTime(code,frame);
-                return 0;
+                result[0] = 0;
+                result[1] = printTime(code);
+                return result;
             }
             case "Ficheiro não encontrado" -> {
-                return 1;
+                result[0] = 1;
+                return result;
             }
         }
-        return -1; // Caso geral, não deve chegar aqui
+        return result; // Caso geral, não deve chegar aqui
     }
 
-    public int printTime(byte[] var0, JFrame frame) throws IOException {
+    public int printTime(byte[] var0) throws IOException {
         int var4 = var0.length > 0 ? var0.length : 1;
         int var5 = Math.max(1, Math.min((int) Math.ceil(Math.log((double) var4)), 10));
-
-        JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
 
         return  var5;
     }
