@@ -75,6 +75,7 @@ public class ClientHandler extends Thread {
                 }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
+                    System.out.println(cfi.getFileURL());
 
                     // Verificar se o ficheiro existe
                     if (cfi.fileExists()) {

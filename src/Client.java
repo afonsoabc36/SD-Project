@@ -139,7 +139,7 @@ public class Client {
     }
 
     public int[] sendCode(String fileURL) throws IOException {
-        ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
+        ClientFileInfo cfi = new ClientFileInfo(this,fileURL); //new ClientFileInfo(this,fileURL);
 
         out.println("URL"); // Header
         out.flush();

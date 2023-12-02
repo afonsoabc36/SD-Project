@@ -196,16 +196,17 @@ public class Menu {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    if(String.valueOf(urlField) == null) { // TODO: Verificar se é == null ou == ""
+                    if(urlField.getText().isEmpty()){
                         JOptionPane.showMessageDialog(frame, "URL is empty. Please try again");
                     }
                     else {
-                        int[] result = c.sendCode(String.valueOf(urlField));
+                        int[] result = c.sendCode(urlField.getText());
                         if (result[0] == 1) { // Ficheiro não encontrado
                             JOptionPane.showMessageDialog(frame, "URL is not valid. Please try again");
                         } else if (result[0] == 0){
                             int var5 = result[1];
                             JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
+                            runCodePage(c);
                             frame.setVisible(false);
                         } else { // Caso geral, erro desconhecido
                             JOptionPane.showMessageDialog(frame, "Error");
