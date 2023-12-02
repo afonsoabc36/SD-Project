@@ -205,7 +205,7 @@ public class Menu {
                             JOptionPane.showMessageDialog(frame, "URL is not valid. Please try again");
                         } else if (result[0] == 0){
                             int var5 = result[1];
-                            JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + "seconds.");
+                            JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + " seconds.");
                             runCodePage(c);
                             frame.setVisible(false);
                         } else { // Caso geral, erro desconhecido

@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashMap;
 import java.nio.file.Files;
@@ -35,7 +36,7 @@ public class ClientHandler extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Running");
+        System.out.println("Running ClientHandler");
         System.out.println("Socket port: " + this.socket.getPort());
         System.out.println("Socket address: " + this.socket.getLocalAddress());
 
@@ -46,7 +47,8 @@ public class ClientHandler extends Thread {
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); // Não sei se vai ser utilizado
 
             String data;
-            while ((data = in.readLine()) != null){
+            while ((data = in.readLine()) != null) {
+                System.out.println("I'm here reading");
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
                     String[] login = resultString.split(","); // login[0] é username e login[1] é password
@@ -75,44 +77,60 @@ public class ClientHandler extends Thread {
                 }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
-                    System.out.println(cfi.getFileURL());
 
                     // Verificar se o ficheiro existe
                     if (cfi.fileExists()) {
-                        out.println("OK"); // Client a partir daqui pode ir fazer outras merdas
+                        out.println(cfi.getEstimatedTime()); // Client a partir daqui pode ir fazer outras merdas, dá o tempo estimado para correr o código
+                        System.out.println("Estimated time: 5");
 
-
-                        Thread thread = new Thread(() -> {
+                        // Criar uma thread para correr o código e meter o output noutro sítio
+                        System.out.println("Thread");
+                        new Thread(() -> {
+                            System.out.println("Thread1");
+                            this.toDoFiles.insertToDoFile(cfi); // Não deve ser necessário, pode ser para vermos se o ficheiro está em fila de espera
+                            System.out.println("Inserted");
                             try {
-                                this.toDoFiles.insertToDoFile(cfi);
-                                Path filePath = Paths.get(cfi.getFileURL());
-                                byte[] code = Files.readAllBytes(filePath);
+                                ServerSlave ss = this.serverSlaves.getFreeServer(1);
+                                System.out.println("Slave " + ss.getName() + " aquired");
+                                if (ss == null) {
+                                    // Dizer que o ficheiro é demasiado grande
+                                } else {
+                                    Socket sssocket = ss.getSocket();
+                                    // TODO: Ver se o sleep devia ser feito aqui ou na função do get FreeServer, deve ser aqui
+                                    BufferedReader bin = new BufferedReader(new InputStreamReader(sssocket.getInputStream()));
+                                    PrintWriter pout = new PrintWriter(sssocket.getOutputStream());
+                                    DataInputStream diss = new DataInputStream(sssocket.getInputStream());
+                                    DataOutputStream doss = new DataOutputStream(sssocket.getOutputStream());
 
-                                // server = getFreeServer();
-                                // if no server await();
-                                // dos = newDataOutputStream(server.getSocket().getOutputStream());
-                                // dis = newDataInputStream(server.getSocket().getInputStream());
-                                // dos.writeInt(code.length);
-                                // dos.write(code);
-                                // dos.flush();
-                                // size = dis.readInt(); // size of array
-                                // output = dis.readNBytes(size);
-                                // ClientFileInfo cfiOutput = new ClientFileInfo(output);
-                                //this.doneFiles.insertDoneFile(cfiOutput);
-                                //
+                                    byte[] code = cfi.getCode();
+                                    pout.println(code.length);
+                                    System.out.println("Size");
+                                    pout.flush();
+                                    doss.write(code);
+                                    doss.flush();
+                                    System.out.println("Code sent");
 
+                                    System.out.println("Waiting");
+                                    int size = Integer.parseInt(bin.readLine());
+                                    System.out.println("Size received");
+                                    byte[] output = diss.readNBytes(size);
+                                    System.out.println("Output: "+Arrays.toString(output));
 
-                            } catch (IOException e) {
+                                    OutputFileInfo ofi = new OutputFileInfo(this.client,output);
+                                    this.doneFiles.insertDoneFile(ofi);
+                                    this.toDoFiles.removeToDoFile(cfi);
+                                    System.out.println("All done");
+                                }
+                            } catch (InterruptedException | IOException e) {
                                 throw new RuntimeException(e);
                             }
-                        });
-
-                        // Criar uma thread que faça o pedido ao ServerSlave e que fique à espera da resposta e que a meta nos DoneFiles
-                        //out.send(code);
-                        //byte[] output = in.read(); // Bloqueado aqui
-                        // ... Inserir em certa pasta de certa cena para guardar tipo BD
-
+                            // if no server await();
+                            // ... Inserir em certa pasta de certa cena para guardar tipo BD
                             // Main setrver tem o ficheiro, cliente -> url(bytes) -> mainServer (cliente )
+
+
+                        }).start();
+                        System.out.println("I'm out");
 
 
                     } else {
@@ -127,7 +145,5 @@ public class ClientHandler extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-
     }
 }

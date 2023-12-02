@@ -12,6 +12,7 @@ import java.io.FileWriter;
 
 public class MainServer implements Runnable {
 
+    private ServerSocket serverSocket;
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
@@ -19,6 +20,7 @@ public class MainServer implements Runnable {
     private int nOfSlaves = 6;
 
     public MainServer() throws IOException {
+        this.serverSocket = new ServerSocket(12345);
         this.doneFiles = new DoneFiles();
         this.toDoFiles = new ToDoFiles();
         this.clients = new Clients();
@@ -27,11 +29,12 @@ public class MainServer implements Runnable {
     }
 
 
-    public void initializeSlaves(int N, int capacity) {
+    public void initializeSlaves(int N, int capacity) throws IOException {
         HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
         for (int i = 0; i<N; i++) {
             String name = "ServerSlave" + i;
-            ServerSlave serverSlave = new ServerSlave(capacity, name); // TODO: Change capacity
+
+            ServerSlave serverSlave = new ServerSlave(capacity, name, new Socket("localhost", 12345)); // TODO: Change capacity
             hash.put(name,serverSlave);
         }
 
@@ -41,11 +44,11 @@ public class MainServer implements Runnable {
     @Override
     public void run() {
         try {
+            System.out.println("Listening for connections on port " + this.serverSocket.getLocalPort());
 
-            ServerSocket ss = new ServerSocket(12345);
-            System.out.println("Listening for connections on port " + ss.getLocalPort());
+            for (int i = 0; i < nOfSlaves; i++) serverSocket.accept(); // Aceitar a conexão com os slaves
             while (true) { // Sempre listening para novas conexões
-                Socket socket = ss.accept(); // Establece a conexão com o cliente
+                Socket socket = serverSocket.accept(); // Establece a conexão com o cliente
                 new ClientHandler(new Client(socket), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
             }
 
@@ -68,33 +71,33 @@ public class MainServer implements Runnable {
 */
 class DoneFiles {
 
-    private ArrayList<ClientFileInfo> doneFiles;
+    private ArrayList<OutputFileInfo> doneFiles;
     private ReentrantLock lock;
 
-    DoneFiles(ArrayList<ClientFileInfo> doneFiles){
+    DoneFiles(ArrayList<OutputFileInfo> doneFiles){
         this.doneFiles = doneFiles;
         this.lock = new ReentrantLock();
     }
 
     DoneFiles(){
-        this.doneFiles = new ArrayList<ClientFileInfo>();
+        this.doneFiles = new ArrayList<OutputFileInfo>();
         this.lock = new ReentrantLock();
     }
 
 
-    public void insertDoneFile(ClientFileInfo cfl){
+    public void insertDoneFile(OutputFileInfo ofi){
         try {
             lock.lock();
-            this.doneFiles.add(cfl);
+            this.doneFiles.add(ofi);
         } finally {
             lock.unlock();
         }
     }
 
-    public void removeDoneFile(ClientFileInfo cfl){
+    public void removeDoneFile(OutputFileInfo ofi){
         try {
             lock.lock();
-            this.doneFiles.remove(cfl);
+            this.doneFiles.remove(ofi);
         } finally {
             lock.unlock();
         }
@@ -165,19 +168,19 @@ class ServerSlaves {
     }
 
     // Função que retorna o nome do primeiro ServerSlave livre, se o ficheiro for demasiado grande retorna "Size capacity exceeded"
-    public String getFreeServer(int space) throws InterruptedException {
+    public ServerSlave getFreeServer(int space) throws InterruptedException {
 
         while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
             int counter = 0;
             for (ServerSlave slave : serverSlaves.values()) {
                 if (slave.isFree()) {
                     if (slave.getMaxCapacity() > space) {
-                        return slave.getName(); // TODO: Maybe dar return logo do ServerSlave
+                        return slave; // TODO: Maybe dar return logo do ServerSlave
                     } else { counter++; }
                 }
             }
             if (counter == getNumberSlaves()) {
-                return "Size capacity exceeded";
+                return null;
             } else {
                 condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
             }

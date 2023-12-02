@@ -7,38 +7,40 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class ClientFileInfo {
+public class OutputFileInfo {
     private Client client;
-    private String fileURL;
+    private byte[] outputCode;
     private LocalDateTime dateTime;
     // TODO: Maybe adicionar uma variável outputName, deixamos que o utiizador dê nome ao ficheiro de output, assim sabe qual é
 
-    public ClientFileInfo(Client client, String fileURL) {
+    public OutputFileInfo(Client client, byte[] outputCode) {
         this.client = client;
-        this.fileURL = fileURL;
+        this.outputCode = outputCode;
         dateTime = LocalDateTime.now();
     }
 
-    public ClientFileInfo(Client client, String fileURL, LocalDateTime dateTime) {
+    public OutputFileInfo(Client client, byte[] outputCode, LocalDateTime dateTime) {
         this.client = client;
-        this.fileURL = fileURL;
+        this.outputCode = outputCode;
         this.dateTime = dateTime;
     }
 
     public void serialize(DataOutputStream out) throws IOException {
         this.client.serialize(out);
-        out.writeUTF(this.fileURL);
+        out.writeInt(outputCode.length);
+        out.write(this.outputCode);
         String time = this.dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         out.writeUTF(time);
     }
 
-    public static ClientFileInfo deserialize(DataInputStream in) throws IOException {
+    public static OutputFileInfo deserialize(DataInputStream in) throws IOException {
         Client client = Client.deserialize(in);
-        String fileURL = in.readUTF();
+        int size = in.readInt();
+        byte[] outputCode = in.readNBytes(size);
         String dateTimeAux = in.readUTF();
         LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
-        return new ClientFileInfo(client, fileURL, dateTime);
+        return new OutputFileInfo(client, outputCode, dateTime);
     }
 
     public Client getClient() {
@@ -49,12 +51,12 @@ public class ClientFileInfo {
         this.client = client;
     }
 
-    public String getFileURL() {
-        return fileURL;
+    public byte[] getOutputCode() {
+        return outputCode;
     }
 
-    public void setFileURL(String fileURL) {
-        this.fileURL = fileURL;
+    public void setOutputCode(byte[] outputCode) {
+        this.outputCode = outputCode;
     }
 
     public LocalDateTime getDateTime() {
@@ -65,19 +67,4 @@ public class ClientFileInfo {
         this.dateTime = dateTime;
     }
 
-    public boolean fileExists() {
-        Path path = Paths.get(this.fileURL);
-        return Files.exists(path);
-    }
-
-    public byte[] getCode() throws IOException {
-        Path filePath = Paths.get(this.fileURL);
-        return Files.readAllBytes(filePath);
-    }
-
-    public int getEstimatedTime() throws IOException {
-        byte[] code = this.getCode();
-        int var4 = code.length > 0 ? code.length : 1;
-        return Math.max(1, Math.min((int) Math.ceil(Math.log((double) var4)), 10));
-    }
 }

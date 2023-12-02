@@ -5,9 +5,7 @@
 * It only talks to the main server, receiving in the socket the code to execute and returning it's output
 */
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.locks.Condition;
@@ -24,7 +22,10 @@ public class ServerSlave implements Runnable {
     boolean free; // True se o servidor não estiver a correr código
     int maxCapacity; // Número máximo de bytes que o código pode ter para ser executado por este servidor
 
-    public ServerSlave(int maxCapacity, String name) {
+    public ServerSlave(int maxCapacity, String name, Socket socket) {
+        this.lock = new ReentrantLock();
+        this.condition = lock.newCondition();
+        this.socket = socket;
         this.name = name;
         this.free = true;
         this.maxCapacity = maxCapacity;
@@ -56,32 +57,33 @@ public class ServerSlave implements Runnable {
         return this.maxCapacity;
     }
 
+    public Socket getSocket() {
+        return this.socket;
+    }
+
     @Override
     public void run() {
         try {
-            BufferedInputStream in = new BufferedInputStream(socket.getInputStream());
-            BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream());
+            DataInputStream dis = new DataInputStream(socket.getInputStream());
+            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-            byte[] code = new byte[this.maxCapacity];
-
-            while (true) { // Loop infinito para ficar à espera de código para correr
-                int bytesRead = in.read(code); // Mudar para readLine, enviar um header e depois dar Serialize do clienFileInfo, como no ClientHandler linha 76 "else if (data.equals("URL")){"
-                if (bytesRead == -1) {
-                    // Nothing to read
-                    break;
-                }
-
-                // Copies the data received to an array of bytes (data type of the input of the execute() method)
-                byte[] codeData = Arrays.copyOf(code, bytesRead);
-
+            String response;
+            while ((response = in.readLine()) != null) { // Loop infinito para ficar à espera de código para correr
                 try {
                     this.lock.lock();
                     this.free = false; // Serveridor está ocupado
+
+                    //
+                    byte[] codeData = dis.readNBytes(Integer.parseInt(response));
+
                     byte[] output = JobFunction.execute(codeData); // Executa o código e guarda o output
 
-                    // Send output back to the server, TODO: Podemos criar uma classe ClientFileOutput e dar serialize dela
-                    out.write(output);
+                    out.println(output.length);
                     out.flush();
+                    dos.write(output);
+                    dos.flush();
                 } finally {
                     this.free = true; // Servidor está livre
                     this.lock.unlock();
@@ -94,7 +96,6 @@ public class ServerSlave implements Runnable {
             System.err.println("job failed: code=" + e.getCode() + " message=" + e.getMessage()); // TODO: Ver se é uma maneira correta de dar handle do erro
         }
     }
-
 
 }
 

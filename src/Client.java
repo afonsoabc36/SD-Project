@@ -149,18 +149,11 @@ public class Client {
         int[] result = new int[2];
         result[0] = -1; // Caso geral
         String response = in.readLine();
-        switch (response) {
-            case "OK" -> {
-                Path filePath = Paths.get(cfi.getFileURL());
-                byte[] code = Files.readAllBytes(filePath);
-                result[0] = 0;
-                result[1] = printTime(code);
-                return result;
-            }
-            case "Ficheiro não encontrado" -> {
-                result[0] = 1;
-                return result;
-            }
+        if (response.equals("Ficheiro não encontrado")) {
+            result[0] = 1;
+        } else {
+            result[0] = 0;
+            result[1] = Integer.parseInt(response);
         }
         return result; // Caso geral, não deve chegar aqui
     }
