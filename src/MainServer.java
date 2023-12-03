@@ -3,6 +3,7 @@ import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileWriter;
@@ -47,6 +48,11 @@ public class MainServer implements Runnable {
             System.out.println("Listening for connections on port " + this.serverSocket.getLocalPort());
 
             for (int i = 0; i < nOfSlaves; i++) serverSocket.accept(); // Aceitar a conexão com os slaves
+            for (ServerSlave slave : serverSlaves.getServerSlaves().values()) { // Criar threads para correr os slaves
+                Thread thread = new Thread(slave);
+                thread.start();
+            }
+
             while (true) { // Sempre listening para novas conexões
                 Socket socket = serverSocket.accept(); // Establece a conexão com o cliente
                 new ClientHandler(new Client(socket), socket, toDoFiles, doneFiles, serverSlaves, clients).start(); // Cria uma thread para o cliente de modo a conseguir receber outros
@@ -167,24 +173,35 @@ class ServerSlaves {
         } finally { lock.unlock(); }
     }
 
+    public HashMap<String, ServerSlave> getServerSlaves(){
+        try {
+            lock.lock();
+            return this.serverSlaves;
+        } finally { lock.unlock(); }
+    }
+
     // Função que retorna o nome do primeiro ServerSlave livre, se o ficheiro for demasiado grande retorna "Size capacity exceeded"
     public ServerSlave getFreeServer(int space) throws InterruptedException {
-
-        while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
-            int counter = 0;
-            for (ServerSlave slave : serverSlaves.values()) {
-                if (slave.isFree()) {
-                    if (slave.getMaxCapacity() > space) {
-                        return slave; // TODO: Maybe dar return logo do ServerSlave
-                    } else { counter++; }
+        try {
+            lock.lock();
+            while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
+                int counter = 0;
+                for (ServerSlave slave : serverSlaves.values()) {
+                    if (slave.isFree()) {
+                        if (slave.getMaxCapacity() > space) {
+                            return slave; // TODO: Maybe dar return logo do ServerSlave
+                        } else {
+                            counter++;
+                        }
+                    }
+                }
+                if (counter == getNumberSlaves()) { // Todos passaram por ser demasiado grande o ficheiro
+                    return null;
+                } else {
+                    condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
                 }
             }
-            if (counter == getNumberSlaves()) {
-                return null;
-            } else {
-                condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
-            }
-        }
+        } finally { lock.unlock(); }
     }
 }
 

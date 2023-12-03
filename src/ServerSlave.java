@@ -50,7 +50,6 @@ public class ServerSlave implements Runnable {
         } finally {
             lock.unlock();
         }
-
     }
 
     public int getMaxCapacity() {
@@ -63,37 +62,41 @@ public class ServerSlave implements Runnable {
 
     @Override
     public void run() {
-        try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream());
-            DataInputStream dis = new DataInputStream(socket.getInputStream());
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+        System.out.println(name + " running");
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             DataInputStream dis = new DataInputStream(socket.getInputStream());
+             DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
 
-            String response;
-            while ((response = in.readLine()) != null) { // Loop infinito para ficar à espera de código para correr
+            System.out.println(name + " waiting on port " + socket.getLocalPort());
+            String responseSize;
+            while ((responseSize = in.readLine())!= null) {
+                System.out.println(name + " read something");
                 try {
                     this.lock.lock();
-                    this.free = false; // Serveridor está ocupado
+                    this.free = false;
 
-                    //
-                    byte[] codeData = dis.readNBytes(Integer.parseInt(response));
+                    byte[] codeData = new byte[Integer.parseInt(responseSize)];
+                    dis.readFully(codeData);
 
-                    byte[] output = JobFunction.execute(codeData); // Executa o código e guarda o output
+                    byte[] output = JobFunction.execute(codeData);
 
-                    out.println(output.length);
-                    out.flush();
+                    // Send output length
+                    dos.writeInt(output.length);
+                    dos.flush();
+
+                    // Send output
                     dos.write(output);
                     dos.flush();
                 } finally {
-                    this.free = true; // Servidor está livre
+                    this.free = true;
                     this.lock.unlock();
-                    this.condition.signalAll(); // Acorda threads que possam estar à espera de um slave para correr código
+                    this.condition.signalAll();
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace(); // Handle the exception properly
         } catch (JobFunctionException e) {
-            System.err.println("job failed: code=" + e.getCode() + " message=" + e.getMessage()); // TODO: Ver se é uma maneira correta de dar handle do erro
+            System.err.println("job failed: code=" + e.getCode() + " message=" + e.getMessage());
         }
     }
 

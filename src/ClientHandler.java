@@ -81,6 +81,7 @@ public class ClientHandler extends Thread {
                     // Verificar se o ficheiro existe
                     if (cfi.fileExists()) {
                         out.println(cfi.getEstimatedTime()); // Client a partir daqui pode ir fazer outras merdas, dá o tempo estimado para correr o código
+                        out.flush();
                         System.out.println("Estimated time: 5");
 
                         // Criar uma thread para correr o código e meter o output noutro sítio
@@ -91,53 +92,61 @@ public class ClientHandler extends Thread {
                             System.out.println("Inserted");
                             try {
                                 ServerSlave ss = this.serverSlaves.getFreeServer(1);
-                                System.out.println("Slave " + ss.getName() + " aquired");
-                                if (ss == null) {
-                                    // Dizer que o ficheiro é demasiado grande
-                                } else {
+                                if (ss != null) {
                                     Socket sssocket = ss.getSocket();
-                                    // TODO: Ver se o sleep devia ser feito aqui ou na função do get FreeServer, deve ser aqui
-                                    BufferedReader bin = new BufferedReader(new InputStreamReader(sssocket.getInputStream()));
-                                    PrintWriter pout = new PrintWriter(sssocket.getOutputStream());
-                                    DataInputStream diss = new DataInputStream(sssocket.getInputStream());
-                                    DataOutputStream doss = new DataOutputStream(sssocket.getOutputStream());
+                                    System.out.println("Slave " + ss.getName() + " acquired and talking on port " + sssocket.getLocalPort());
 
-                                    byte[] code = cfi.getCode();
-                                    pout.println(code.length);
-                                    System.out.println("Size");
-                                    pout.flush();
-                                    doss.write(code);
-                                    doss.flush();
-                                    System.out.println("Code sent");
+                                    try (BufferedReader bin = new BufferedReader(new InputStreamReader(sssocket.getInputStream()));
+                                         PrintWriter pout = new PrintWriter(sssocket.getOutputStream());
+                                         DataInputStream diss = new DataInputStream(sssocket.getInputStream());
+                                         DataOutputStream doss = new DataOutputStream(sssocket.getOutputStream())) {
 
-                                    System.out.println("Waiting");
-                                    int size = Integer.parseInt(bin.readLine());
-                                    System.out.println("Size received");
-                                    byte[] output = diss.readNBytes(size);
-                                    System.out.println("Output: "+Arrays.toString(output));
+                                        System.out.println("Still on port " + sssocket.getLocalPort());
+                                        byte[] code = cfi.getCode();
+                                        System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
-                                    OutputFileInfo ofi = new OutputFileInfo(this.client,output);
-                                    this.doneFiles.insertDoneFile(ofi);
-                                    this.toDoFiles.removeToDoFile(cfi);
-                                    System.out.println("All done");
+                                        // Send code length
+                                        System.out.println("Sending length: " + code.length);
+                                        pout.println(code.length);
+                                        pout.flush();
+
+                                        System.out.println("Sending code: " + Arrays.toString(code));
+                                        // Send code
+                                        doss.write(code);
+                                        doss.flush();
+
+                                        System.out.println("Waiting");
+                                        // Receive size
+                                        String size = bin.readLine();
+
+                                        System.out.println("Got size: " + size);
+                                        // Receive output
+                                        byte[] output = new byte[Integer.parseInt(size)];
+                                        diss.readFully(output);
+
+                                        // Process output as needed
+                                        OutputFileInfo ofi = new OutputFileInfo(this.client, output);
+                                        this.doneFiles.insertDoneFile(ofi);
+                                        this.toDoFiles.removeToDoFile(cfi);
+                                    }
+                                } else {
+                                    // Handle the case where no free server is available
                                 }
+
+                                // Other code...
                             } catch (InterruptedException | IOException e) {
-                                throw new RuntimeException(e);
+                                e.printStackTrace(); // Handle the exception properly
                             }
                             // if no server await();
-                            // ... Inserir em certa pasta de certa cena para guardar tipo BD
-                            // Main setrver tem o ficheiro, cliente -> url(bytes) -> mainServer (cliente )
-
-
+                            // ... Insert into a certain folder of a certain thing to save like a database
+                            // Main server has the file, client -> url(bytes) -> mainServer (client)
                         }).start();
                         System.out.println("I'm out");
-
-
                     } else {
                         out.println("Ficheiro não encontrado");
+                        out.flush();
                     }
 
-                    out.flush();
                 } else {
                     out.println("general response"); // Não deve ser preciso, apenas para debugging
                 }

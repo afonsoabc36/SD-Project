@@ -88,19 +88,19 @@ public class Client {
     public void serialize(DataOutputStream out) throws IOException{
         out.writeUTF(this.name);
         out.writeUTF(this.password);
-        String remoteIpAddress = socket.getInetAddress().getHostAddress();
+        /*String remoteIpAddress = socket.getInetAddress().getHostAddress();
         int remotePort = socket.getPort();
         out.writeUTF(remoteIpAddress);
-        out.writeInt(remotePort);
+        out.writeInt(remotePort);*/
     }
 
     public static Client deserialize(DataInputStream in) throws IOException {
         String name = in.readUTF();
         String password = in.readUTF();
-        String remoteIpAddress = in.readUTF();
-        int remotePort = in.readInt();
+        /*String remoteIpAddress = in.readUTF();
+        int remotePort = in.readInt();*/
 
-        return new Client(name, password, new Socket(remoteIpAddress, remotePort));
+        return new Client(name, password/*, new Socket(remoteIpAddress, remotePort)*/);
     }
 
     public int hasUser(String username, String password) throws IOException {
