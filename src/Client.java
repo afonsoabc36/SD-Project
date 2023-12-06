@@ -155,14 +155,7 @@ public class Client {
             result[0] = 0;
             result[1] = Integer.parseInt(response);
         }
-        return result; // Caso geral, não deve chegar aqui
-    }
-
-    public int printTime(byte[] var0) throws IOException {
-        int var4 = var0.length > 0 ? var0.length : 1;
-        int var5 = Math.max(1, Math.min((int) Math.ceil(Math.log((double) var4)), 10));
-
-        return  var5;
+        return result;
     }
 
     public static void main(String[] args) throws IOException {

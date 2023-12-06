@@ -249,12 +249,13 @@ public class Menu {
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
+        frame.setLayout(new BorderLayout());
 
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        JPanel goBackPanel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
 
         JButton goBack = new JButton("<-");
-        goBack.add(goBack, BorderLayout.WEST);
+
+        panel.add(goBack, BorderLayout.WEST);
 
         // Go Back Button
         goBack.addActionListener(new ActionListener() {
@@ -272,7 +273,7 @@ public class Menu {
         JList<String> outputList = new JList<>(outputListModel);
         JScrollPane scrollPane = new JScrollPane(outputList);
 
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(scrollPane, BorderLayout.CENTER);
 
         // Add a double-click listener to the list items to handle item selection
         outputList.addMouseListener(new MouseAdapter() {
@@ -288,7 +289,7 @@ public class Menu {
             }
         });
 
-        frame.add(mainPanel);
+        frame.add(panel);
         frame.setVisible(true);
     }
 
