@@ -6,11 +6,16 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.annotation.processing.SupportedSourceVersion;
 
 
@@ -68,15 +73,18 @@ public class Menu {
         registerButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                String login[] = new String[0];
                 String username = usernameField.getText();
+                login[0] = username;
                 String password = new String(passwordField.getPassword());
-
+                login[1] = password;
                 try {
                     if (existsClient(username, password) == 1) { // Se não existir um cliente com esse username
                         try {
                             if(addClient(username, password) != 0){ // Register falhou TODO: Verificar, acho que não é preciso esta verificação, já se faz isso antes
                                 JOptionPane.showMessageDialog(frame, "Register failed. Please change your username.");
                             } else {
+                                c.setNamePassword(login);
                                 mainMenuPage(c);
                                 frame.setVisible(false);
                             }
@@ -96,11 +104,15 @@ public class Menu {
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                String login[] = new String[2];
                 String username = usernameField.getText();
+                login[0] = username;
                 String password = new String(passwordField.getPassword());
+                login[1] = password;
 
                 try {
                     if (existsClient(username, password) == 0) { // Dados do login corretos
+                        c.setNamePassword(login);
                         mainMenuPage(c);
                         frame.setVisible(false);
                     } else if (existsClient(username, password) == 1){ // Username não existe
@@ -204,8 +216,8 @@ public class Menu {
                         if (result[0] == 1) { // Ficheiro não encontrado
                             JOptionPane.showMessageDialog(frame, "URL is not valid. Please try again");
                         } else if (result[0] == 0){
-                            int var5 = result[1];
-                            JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + var5 + " seconds.");
+                            int expectedTime = result[1];
+                            JOptionPane.showMessageDialog(frame, "Working on your code, we are expecting to resolve it in " + expectedTime + " seconds.");
                             runCodePage(c);
                             frame.setVisible(false);
                         } else { // Caso geral, erro desconhecido
@@ -245,7 +257,7 @@ public class Menu {
     }
 
 
-    private static void outputsPage(Client c) { //TODO: Incompleto, "pseudocodigo"
+    private static void outputsPage(Client c) {
         JFrame frame = new JFrame("Outputs Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800, 400);
@@ -266,24 +278,49 @@ public class Menu {
             }
         });
 
+        // Vai para o folder com os outputs do cliente
+        String folderPath = "./output/" + c.getName()+ "/";
+        File folder = new File(folderPath);
+        File[] files = folder.listFiles();
 
-        // TODO: get the list from the main server
-        DefaultListModel<String> outputListModel = new DefaultListModel<>();
+        List<String> clientOutputFiles = new ArrayList<String>();
+        if (files != null) {
+            clientOutputFiles = Arrays.stream(files)
+                    .map(File::getName)
+                    .collect(Collectors.toList());
+        }
 
-        JList<String> outputList = new JList<>(outputListModel);
+        // Use JList instead of java.awt.List
+        JList<String> outputList = new JList<>(clientOutputFiles.toArray(new String[0]));
         JScrollPane scrollPane = new JScrollPane(outputList);
 
         panel.add(scrollPane, BorderLayout.CENTER);
 
         // Add a double-click listener to the list items to handle item selection
+        List<String> finalClientOutputFiles = clientOutputFiles;
         outputList.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int index = outputList.locationToIndex(e.getPoint());
                     if (index >= 0) {
-                        String selectedOutput = outputListModel.getElementAt(index);
-                        // Handle the selected output (e.g., display it or navigate to another page)
-                        JOptionPane.showMessageDialog(frame, "Selected: " + selectedOutput);
+                        String fileName = finalClientOutputFiles.get(index);
+                        try {
+                            File fileToOpen = new File("./output/" + c.getName() + "/"+ fileName);
+                            String fileContents = new String(Files.readAllBytes(fileToOpen.toPath()), StandardCharsets.UTF_8);
+
+                            JTextArea textArea = new JTextArea(fileContents);
+                            JScrollPane scrollPane = new JScrollPane(textArea);
+
+                            JFrame popupFrame = new JFrame("File Contents: " + fileName);
+                            popupFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                            popupFrame.setSize(600, 400);
+                            popupFrame.setLayout(new BorderLayout());
+                            popupFrame.add(scrollPane, BorderLayout.CENTER);
+                            popupFrame.setVisible(true);
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                            JOptionPane.showMessageDialog(null, "Error reading file: " + ex.getMessage());
+                        }
                     }
                 }
             }
@@ -291,6 +328,7 @@ public class Menu {
 
         frame.add(panel);
         frame.setVisible(true);
+
     }
 
     public void deploy(Client c) throws IOException {

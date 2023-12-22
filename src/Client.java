@@ -73,6 +73,11 @@ public class Client {
         return this.name;
     }
 
+    public void setNamePassword(String[] login){
+        this.name = login[0];
+        this.password = login[1];
+    }
+
     public String getPassword(){
         return this.password;
     }
@@ -104,7 +109,7 @@ public class Client {
     }
 
     public int hasUser(String username, String password) throws IOException {
-        out.println("login:"+username+","+password);
+        out.println("login:" + username + "," + password);
         out.flush();
 
         String response = in.readLine();
@@ -123,7 +128,7 @@ public class Client {
     }
 
     public int regUser(String username, String password) throws IOException {
-        out.println("register:"+username+","+password);
+        out.println("register:" + username + "," + password);
         out.flush();
 
         String response = in.readLine();
@@ -139,7 +144,7 @@ public class Client {
     }
 
     public int[] sendCode(String fileURL) throws IOException {
-        ClientFileInfo cfi = new ClientFileInfo(this,fileURL); //new ClientFileInfo(this,fileURL);
+        ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
 
         out.println("URL"); // Header
         out.flush();

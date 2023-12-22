@@ -1,11 +1,14 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.HashMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.zip.GZIPInputStream;
 
 /*
 * Classe/Thread que vai ser criada para cada cliente que se conecte ao MainServer
@@ -32,11 +35,23 @@ public class ClientHandler extends Thread {
         this.toDoFiles.insertToDoFile(cfi);
     }
 
+    private boolean clientDirectory(String name){
+        String outputURL = "./output/";
+        File clientDir = new File(outputURL + name);
+
+        if (!clientDir.isDirectory()) {
+            return clientDir.mkdir();
+        }
+
+        return true;
+    }
+
     @Override
     public void run() {
         System.out.println("Running ClientHandler");
         System.out.println("Socket port: " + this.socket.getPort());
         System.out.println("Socket address: " + this.socket.getLocalAddress());
+
 
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -53,7 +68,12 @@ public class ClientHandler extends Thread {
 
                     int loginResult = this.clients.checkLogin(login);
                     if(loginResult == 0){
-                        out.println("OK");
+                        client.setNamePassword(login);
+                        if (clientDirectory(client.getName())) {
+                            out.println("OK");
+                        } else {
+                            out.println("Error creating client directory");
+                        }
                     } else if (loginResult == 1){
                         out.println("Username does not exist");
                     } else {
@@ -69,7 +89,12 @@ public class ClientHandler extends Thread {
                         out.println("Name is already taken");
                     } else {
                         this.clients.addClient(register);
-                        out.println("OK");
+                        client.setNamePassword(register);
+                        if (clientDirectory(client.getName())) {
+                            out.println("OK");
+                        } else {
+                            out.println("Error creating client directory");
+                        }
                     }
                     out.flush();
                 }
@@ -111,23 +136,46 @@ public class ClientHandler extends Thread {
                                         String outputAux = bin.readLine();
                                         String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
 
-                                        // Convert the string array to a byte array
-                                        byte[] output = new byte[byteValues.length];
+
+                                        byte[] compressed = new byte[byteValues.length];
                                         for (int i = 0; i < byteValues.length; i++) {
-                                            output[i] = Byte.parseByte(byteValues[i]);
+                                            compressed[i] = Byte.parseByte(byteValues[i]);
                                         }
-                                        System.out.println("Output 2: "+Arrays.toString(output));
+                                        System.out.println("Compressed: " + Arrays.toString(compressed));
 
-                                        // Process output as needed
-                                        OutputFileInfo ofi = new OutputFileInfo(this.client, output);
-                                        this.doneFiles.insertDoneFile(ofi);
-                                        this.toDoFiles.removeToDoFile(cfi);
-                                    }
-                                } else {
-                                    // Handle the case where no free server is available
+                                        try (ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
+                                             GZIPInputStream gis = new GZIPInputStream(bis);
+                                             InputStreamReader reader = new InputStreamReader(gis, StandardCharsets.UTF_8);
+                                             BufferedReader bufferedReader = new BufferedReader(reader)) {
+
+                                            StringBuilder content = new StringBuilder();
+                                            String line;
+                                            while ((line = bufferedReader.readLine()) != null) {
+                                                content.append(line).append("\n");
+                                            }
+
+                                            byte[] output = content.toString().getBytes(StandardCharsets.UTF_8);
+
+                                            System.out.println("Output 2: " + Arrays.toString(output));
+                                            System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
+
+                                            // FIXME: Cliente a ser criado sem nome, dar set do nome dele
+                                            String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                            Path outputPath = Paths.get(outputFilePath);
+                                            Files.write(outputPath, output);
+                                            System.out.println("Output saved to file: " + outputFilePath);
+
+                                            // Process output as needed
+                                            OutputFileInfo ofi = new OutputFileInfo(this.client, output);
+                                            this.doneFiles.insertDoneFile(ofi);
+                                            this.toDoFiles.removeToDoFile(cfi);
+                                        }
+                                    } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    } else {
+                                    // TODO: Handle the case where no free server is available
                                 }
-
-                                // Other code...
                             } catch (InterruptedException | IOException e) {
                                 e.printStackTrace(); // Handle the exception properly
                             }

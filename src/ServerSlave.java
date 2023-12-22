@@ -48,12 +48,10 @@ public class ServerSlave implements Runnable {
 
     public boolean isFree() {
         try {
-            this.lock.lock();
-            System.out.println(name + " is free: " + free);
+            lock.lock();
             return free;
         } finally {
-            this.lock.unlock();
-            System.out.println(name + " unlocked");
+            lock.unlock();
         }
     }
 
@@ -65,12 +63,27 @@ public class ServerSlave implements Runnable {
         return this.serverSocket.getLocalPort();
     }
 
+    private void setFree(){
+        try {
+            lock.lock();
+            this.free = true;
+            condition.signalAll();
+        } finally { lock.unlock(); }
+    }
+
+    private void setBusy(){
+        try {
+            lock.lock();
+            this.free = true;
+        } finally { lock.unlock(); }
+    }
+
     @Override
     public void run() {
-        System.out.println(name + " waiting for connection on port " + serverSocket.getLocalPort());
         while (true) {
             Socket socket = null;
             try {
+                System.out.println(name + " waiting for connection on port " + serverSocket.getLocalPort());
                 socket = serverSocket.accept();
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -84,8 +97,7 @@ public class ServerSlave implements Runnable {
                     System.out.println(name + " read something");
                     System.out.println("read " + code);
                     try {
-                        this.lock.lock();
-                        this.free = false;
+                        setBusy(); // lock; free = false; unlock
 
                         String[] byteValues = code.replaceAll("\\[|\\]|\\s", "").split(",");
 
@@ -97,16 +109,13 @@ public class ServerSlave implements Runnable {
                         System.out.println(Arrays.toString(byteArray));
                         byte[] output = JobFunction.execute(byteArray);
 
-                        System.out.println("output 1 :"+Arrays.toString(output));
+                        System.out.println("output 1: " + Arrays.toString(output));
                         // Send output length
                         out.println(Arrays.toString(output));
                         out.flush();
 
                     } finally {
-                        this.free = true;
-                        System.out.println("signalAll");
-                        this.condition.signalAll();
-                        this.lock.unlock();
+                        setFree(); // lock; free = true ; signalAll ; unlock
                     }
                 }
                 System.out.println(name + " got out of the loop");
