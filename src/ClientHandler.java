@@ -1,9 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.HashMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -93,36 +91,32 @@ public class ClientHandler extends Thread {
                             try {
                                 ServerSlave ss = this.serverSlaves.getFreeServer(1);
                                 if (ss != null) {
-                                    Socket sssocket = ss.getSocket();
+                                    int port = ss.getPort();
+                                    Socket sssocket = new Socket("localhost", port);
                                     System.out.println("Slave " + ss.getName() + " acquired and talking on port " + sssocket.getLocalPort());
 
                                     try (BufferedReader bin = new BufferedReader(new InputStreamReader(sssocket.getInputStream()));
-                                         PrintWriter pout = new PrintWriter(sssocket.getOutputStream());
-                                         DataInputStream diss = new DataInputStream(sssocket.getInputStream());
-                                         DataOutputStream doss = new DataOutputStream(sssocket.getOutputStream())) {
+                                         PrintWriter pout = new PrintWriter(sssocket.getOutputStream())) {
 
                                         System.out.println("Still on port " + sssocket.getLocalPort());
                                         byte[] code = cfi.getCode();
                                         System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
-                                        // Send code length
-                                        System.out.println("Sending length: " + code.length);
-                                        pout.println(code.length);
+                                        System.out.println("Sending code: " + Arrays.toString(code));
+                                        pout.println(Arrays.toString(code));
                                         pout.flush();
 
-                                        System.out.println("Sending code: " + Arrays.toString(code));
-                                        // Send code
-                                        doss.write(code);
-                                        doss.flush();
-
                                         System.out.println("Waiting");
-                                        // Receive size
-                                        String size = bin.readLine();
-
-                                        System.out.println("Got size: " + size);
                                         // Receive output
-                                        byte[] output = new byte[Integer.parseInt(size)];
-                                        diss.readFully(output);
+                                        String outputAux = bin.readLine();
+                                        String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
+
+                                        // Convert the string array to a byte array
+                                        byte[] output = new byte[byteValues.length];
+                                        for (int i = 0; i < byteValues.length; i++) {
+                                            output[i] = Byte.parseByte(byteValues[i]);
+                                        }
+                                        System.out.println("Output 2: "+Arrays.toString(output));
 
                                         // Process output as needed
                                         OutputFileInfo ofi = new OutputFileInfo(this.client, output);

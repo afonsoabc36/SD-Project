@@ -11,9 +11,12 @@ import java.io.FileWriter;
 
 // Acho que devia existir um main para permitir que o server corresse
 
+
 public class MainServer implements Runnable {
 
+    int port = 12347;
     private ServerSocket serverSocket;
+    private ServerSocket serverSlaveSocket;
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
@@ -22,6 +25,7 @@ public class MainServer implements Runnable {
 
     public MainServer() throws IOException {
         this.serverSocket = new ServerSocket(12345);
+        this.serverSlaveSocket = new ServerSocket(12346);
         this.doneFiles = new DoneFiles();
         this.toDoFiles = new ToDoFiles();
         this.clients = new Clients();
@@ -35,7 +39,7 @@ public class MainServer implements Runnable {
         for (int i = 0; i<N; i++) {
             String name = "ServerSlave" + i;
 
-            ServerSlave serverSlave = new ServerSlave(capacity, name, new Socket("localhost", 12345)); // TODO: Change capacity
+            ServerSlave serverSlave = new ServerSlave(capacity, name, port++); // TODO: Change capacity
             hash.put(name,serverSlave);
         }
 
@@ -46,8 +50,8 @@ public class MainServer implements Runnable {
     public void run() {
         try {
             System.out.println("Listening for connections on port " + this.serverSocket.getLocalPort());
+            System.out.println("Listening for connections on port " + this.serverSlaveSocket.getLocalPort());
 
-            for (int i = 0; i < nOfSlaves; i++) serverSocket.accept(); // Aceitar a conexão com os slaves
             for (ServerSlave slave : serverSlaves.getServerSlaves().values()) { // Criar threads para correr os slaves
                 Thread thread = new Thread(slave);
                 thread.start();
