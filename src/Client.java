@@ -13,8 +13,6 @@ public class Client {
     private String name;
     protected String password;
     private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
     private DataInputStream dis;
     private DataOutputStream dos;
 
@@ -22,8 +20,6 @@ public class Client {
         this.name = "";
         this.password = "";
         this.socket = new Socket("localhost", 12345);
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.out = new PrintWriter(socket.getOutputStream());
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
     }
@@ -31,8 +27,6 @@ public class Client {
         this.name = "";
         this.password = "";
         this.socket = socket;
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.out = new PrintWriter(socket.getOutputStream());
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
     }
@@ -41,8 +35,6 @@ public class Client {
         this.name = username;
         this.password = password;
         this.socket = null;
-        this.in = null;
-        this.out = null;
         this.dis = null;
         this.dos = null;
     }
@@ -51,8 +43,6 @@ public class Client {
         this.name = username;
         this.password = password;
         this.socket = socket;
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.out = new PrintWriter(socket.getOutputStream());
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
     }
@@ -63,8 +53,6 @@ public class Client {
 
     public void setSocket(Socket socket) throws IOException {
         this.socket = socket;
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        this.out = new PrintWriter(socket.getOutputStream());
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
     }
@@ -109,10 +97,10 @@ public class Client {
     }
 
     public int hasUser(String username, String password) throws IOException {
-        out.println("login:" + username + "," + password);
-        out.flush();
+        dos.writeUTF("login:" + username + "," + password);
+        dos.flush();
 
-        String response = in.readLine();
+        String response = dis.readUTF();
         switch (response) {
             case "OK" -> {
                 return 0;
@@ -128,10 +116,10 @@ public class Client {
     }
 
     public int regUser(String username, String password) throws IOException {
-        out.println("register:" + username + "," + password);
-        out.flush();
+        dos.writeUTF("register:" + username + "," + password);
+        dos.flush();
 
-        String response = in.readLine();
+        String response = dis.readUTF();
         switch (response) {
             case "OK" -> {
                 return 0;
@@ -146,14 +134,13 @@ public class Client {
     public int[] sendCode(String fileURL) throws IOException {
         ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
 
-        out.println("URL"); // Header
-        out.flush();
+        dos.writeUTF("URL"); // Header
         cfi.serialize(dos); // Conteúdo
         dos.flush();
 
         int[] result = new int[2];
         result[0] = -1; // Caso geral
-        String response = in.readLine();
+        String response = dis.readUTF();
         if (response.equals("Ficheiro não encontrado")) {
             result[0] = 1;
         } else {
@@ -168,6 +155,8 @@ public class Client {
 
         Menu menu = new Menu();
         menu.deploy(c);
+
+        // FIXME: Para que e que precisamos deste while(true)
 
         while(true){
             // TODO: Fazer algo para que o cliente fique ligado,não sei bem o quê, maybe meter a criação e o deploy do menu aqui

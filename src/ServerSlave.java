@@ -88,12 +88,13 @@ public class ServerSlave implements Runnable {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                 PrintWriter out = new PrintWriter(socket.getOutputStream());) {
+            try (DataInputStream diss = new DataInputStream(socket.getInputStream());
+                 DataOutputStream doss =  new DataOutputStream(socket.getOutputStream());) {
 
                 System.out.println(name + " waiting on port " + socket.getLocalPort());
                 String code;
-                while ((code = in.readLine()) != null) {
+                while (true) {
+                    code = diss.readUTF();
                     System.out.println(name + " read something");
                     System.out.println("read " + code);
                     try {
@@ -111,18 +112,19 @@ public class ServerSlave implements Runnable {
 
                         System.out.println("output 1: " + Arrays.toString(output));
                         // Send output length
-                        out.println(Arrays.toString(output));
-                        out.flush();
+                        doss.writeUTF(Arrays.toString(output));
+                        doss.flush();
 
+                    } catch (JobFunctionException e) {
+                        throw new RuntimeException(e);
                     } finally {
                         setFree(); // lock; free = true ; signalAll ; unlock
+                        break;
                     }
                 }
                 System.out.println(name + " got out of the loop");
             } catch (IOException e) {
                 e.printStackTrace(); // Handle the exception properly
-            } catch (JobFunctionException e) {
-                System.err.println("job failed: code=" + e.getCode() + " message=" + e.getMessage());
             }
         }
     }

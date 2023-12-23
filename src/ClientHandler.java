@@ -54,13 +54,12 @@ public class ClientHandler extends Thread {
 
 
         try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream());
             DataInputStream dis = new DataInputStream(socket.getInputStream());
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); // Não sei se vai ser utilizado
 
             String data;
-            while ((data = in.readLine()) != null) {
+            while (true) {
+                data = dis.readUTF();
                 System.out.println("I'm here reading");
                 if (data.startsWith("login:")){
                     String resultString = data.substring("login:".length()); // Remove o login: da string, ficando apenas com os dados
@@ -70,42 +69,43 @@ public class ClientHandler extends Thread {
                     if(loginResult == 0){
                         client.setNamePassword(login);
                         if (clientDirectory(client.getName())) {
-                            out.println("OK");
+                            dos.writeUTF("OK");
                         } else {
-                            out.println("Error creating client directory");
+                            dos.writeUTF("Error creating client directory");
                         }
                     } else if (loginResult == 1){
-                        out.println("Username does not exist");
+                        dos.writeUTF("Username does not exist");
                     } else {
-                        out.println("Password incorrect");
+                        dos.writeUTF("Password incorrect");
                     }
-                    out.flush();
+                    dos.flush();
                 }
                 else if (data.startsWith("register:")){
                     String resultString = data.substring("register:".length());
                     String[] register = resultString.split(",");
 
                     if (this.clients.nameExists(register[0])) { // register[0] é username e register[1] é password
-                        out.println("Name is already taken");
+                        dos.writeUTF("Name is already taken");
                     } else {
                         this.clients.addClient(register);
                         client.setNamePassword(register);
                         if (clientDirectory(client.getName())) {
-                            out.println("OK");
+                            dos.writeUTF("OK");
                         } else {
-                            out.println("Error creating client directory");
+                            dos.writeUTF("Error creating client directory");
                         }
                     }
-                    out.flush();
+                    dos.flush();
                 }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
 
                     // Verificar se o ficheiro existe
                     if (cfi.fileExists()) {
-                        out.println(cfi.getEstimatedTime()); // Client a partir daqui pode ir fazer outras merdas, dá o tempo estimado para correr o código
-                        out.flush();
-                        System.out.println("Estimated time: 5");
+                        String time = Integer.toString(cfi.getEstimatedTime());
+                        dos.writeUTF(time); // Client a partir daqui pode ir fazer outras merdas, dá o tempo estimado para correr o código
+                        dos.flush();
+                        System.out.println("Estimated time: " + time);
 
                         // Criar uma thread para correr o código e meter o output noutro sítio
                         System.out.println("Thread");
@@ -120,56 +120,57 @@ public class ClientHandler extends Thread {
                                     Socket sssocket = new Socket("localhost", port);
                                     System.out.println("Slave " + ss.getName() + " acquired and talking on port " + sssocket.getLocalPort());
 
-                                    try (BufferedReader bin = new BufferedReader(new InputStreamReader(sssocket.getInputStream()));
-                                         PrintWriter pout = new PrintWriter(sssocket.getOutputStream())) {
+                                    try (DataInputStream diss = new DataInputStream(sssocket.getInputStream());
+                                         DataOutputStream doss =  new DataOutputStream(sssocket.getOutputStream());) {
 
                                         System.out.println("Still on port " + sssocket.getLocalPort());
                                         byte[] code = cfi.getCode();
                                         System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
                                         System.out.println("Sending code: " + Arrays.toString(code));
-                                        pout.println(Arrays.toString(code));
-                                        pout.flush();
+                                        doss.writeUTF(Arrays.toString(code));
+                                        doss.flush();
 
                                         System.out.println("Waiting");
                                         // Receive output
-                                        String outputAux = bin.readLine();
-                                        String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
+                                            System.out.println("Waiting to read");
+                                            String outputAux = diss.readUTF();
+                                            System.out.println("Output 1.5: " + outputAux);
+                                            String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
 
-
-                                        byte[] compressed = new byte[byteValues.length];
-                                        for (int i = 0; i < byteValues.length; i++) {
-                                            compressed[i] = Byte.parseByte(byteValues[i]);
-                                        }
-                                        System.out.println("Compressed: " + Arrays.toString(compressed));
-
-                                        try (ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
-                                             GZIPInputStream gis = new GZIPInputStream(bis);
-                                             InputStreamReader reader = new InputStreamReader(gis, StandardCharsets.UTF_8);
-                                             BufferedReader bufferedReader = new BufferedReader(reader)) {
-
-                                            StringBuilder content = new StringBuilder();
-                                            String line;
-                                            while ((line = bufferedReader.readLine()) != null) {
-                                                content.append(line).append("\n");
+                                            byte[] compressed = new byte[byteValues.length];
+                                            for (int i = 0; i < byteValues.length; i++) {
+                                                compressed[i] = Byte.parseByte(byteValues[i]);
                                             }
+                                            System.out.println("Compressed: " + Arrays.toString(compressed));
 
-                                            byte[] output = content.toString().getBytes(StandardCharsets.UTF_8);
+                                            try (ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
+                                                 GZIPInputStream gis = new GZIPInputStream(bis);
+                                                 InputStreamReader reader = new InputStreamReader(gis, StandardCharsets.UTF_8);
+                                                 BufferedReader bufferedReader = new BufferedReader(reader)) {
 
-                                            System.out.println("Output 2: " + Arrays.toString(output));
-                                            System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
+                                                StringBuilder content = new StringBuilder();
+                                                String line;
+                                                while ((line = bufferedReader.readLine()) != null) {
+                                                    content.append(line).append("\n");
+                                                }
 
-                                            // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                            String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
-                                            Path outputPath = Paths.get(outputFilePath);
-                                            Files.write(outputPath, output);
-                                            System.out.println("Output saved to file: " + outputFilePath);
+                                                byte[] output = content.toString().getBytes(StandardCharsets.UTF_8);
 
-                                            // Process output as needed
-                                            OutputFileInfo ofi = new OutputFileInfo(this.client, output);
-                                            this.doneFiles.insertDoneFile(ofi);
-                                            this.toDoFiles.removeToDoFile(cfi);
-                                        }
+                                                System.out.println("Output 2: " + Arrays.toString(output));
+                                                System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
+
+                                                // FIXME: Cliente a ser criado sem nome, dar set do nome dele
+                                                String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                                Path outputPath = Paths.get(outputFilePath);
+                                                Files.write(outputPath, output);
+                                                System.out.println("Output saved to file: " + outputFilePath);
+
+                                                // Process output as needed
+                                                OutputFileInfo ofi = new OutputFileInfo(this.client, output);
+                                                this.doneFiles.insertDoneFile(ofi);
+                                                this.toDoFiles.removeToDoFile(cfi);
+                                            }
                                     } catch (IOException e) {
                                             throw new RuntimeException(e);
                                         }
@@ -185,12 +186,12 @@ public class ClientHandler extends Thread {
                         }).start();
                         System.out.println("I'm out");
                     } else {
-                        out.println("Ficheiro não encontrado");
-                        out.flush();
+                        dos.writeUTF("Ficheiro não encontrado");
+                        dos.flush();
                     }
 
                 } else {
-                    out.println("general response"); // Não deve ser preciso, apenas para debugging
+                    dos.writeUTF("general response"); // Não deve ser preciso, apenas para debugging
                 }
             }
         } catch (IOException e) {
