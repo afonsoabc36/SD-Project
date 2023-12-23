@@ -53,6 +53,16 @@ public class ClientFileInfo {
         return fileURL;
     }
 
+    public String getFileName() {
+        Path path = Paths.get(this.fileURL);
+        String filenameWithExtension = path.getFileName().toString();
+
+        int lastDot = filenameWithExtension.lastIndexOf('.');
+        String filename = filenameWithExtension.substring(0, lastDot);
+
+        return filename;
+    }
+
     public void setFileURL(String fileURL) {
         this.fileURL = fileURL;
     }

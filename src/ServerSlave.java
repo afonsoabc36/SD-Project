@@ -93,41 +93,37 @@ public class ServerSlave implements Runnable {
                  DataOutputStream doss =  new DataOutputStream(socket.getOutputStream());) {
 
                 System.out.println(name + " waiting on port " + socket.getLocalPort());
-                String code;
-                while (true) {
-                    code = diss.readUTF();
-                    System.out.println(name + " read something");
-                    System.out.println("read " + code);
-                    try {
-                        String[] byteValues = code.replaceAll("\\[|\\]|\\s", "").split(",");
 
-                        // Convert the string array to a byte array
-                        byte[] byteArray = new byte[byteValues.length];
-                        for (int i = 0; i < byteValues.length; i++) {
-                            byteArray[i] = Byte.parseByte(byteValues[i]);
-                        }
-                        System.out.println(Arrays.toString(byteArray));
-                        byte[] output = JobFunction.execute(byteArray);
+                int codeSize = diss.readInt();
+                System.out.println(name + " read something with a size " + codeSize);
+                byte [] code = diss.readNBytes(codeSize);
+                System.out.println("read " + Arrays.toString(code));
+                try {
+                    byte[] output = JobFunction.execute(code);
 
-                        System.out.println("output 1: " + Arrays.toString(output));
-                        String outputString = Arrays.toString(output);
-                        int chunkSize = 65535;
-                        for (int i = 0; i < outputString.length(); i += chunkSize) {
-                            int endIndex = Math.min(i + chunkSize, outputString.length());
-                            String chunk = outputString.substring(i, endIndex);
-                            doss.writeUTF(chunk);
+                    System.out.println("output 1: " + Arrays.toString(output));
 
-                        }
-                        doss.flush();
+                    doss.writeInt(output.length);
+                    doss.flush();
 
-                    } catch (JobFunctionException e) {
-                        doss.writeUTF("JobFunction.execute() error");
-                        doss.flush();
-                    } finally {
-                        setFree(); // lock; free = true ; signalAll ; unlock
-                        break;
+                    int chunkSize = 65535;
+                    int offset = 0;
+
+                    while (offset < output.length) {
+                        int length = Math.min(chunkSize, output.length - offset);
+                        doss.write(output, offset, length);
+                        offset += length;
                     }
+
+                    doss.flush();
+
+                } catch (JobFunctionException e) {
+                    doss.writeInt(-1);
+                    doss.flush();
+                } finally {
+                    setFree(); // lock; free = true ; signalAll ; unlock
                 }
+
                 System.out.println(name + " got out of the loop");
             } catch (IOException e) {
                 e.printStackTrace(); // Handle the exception properly

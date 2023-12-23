@@ -127,45 +127,47 @@ public class ClientHandler extends Thread {
                                         byte[] code = cfi.getCode();
                                         System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
-                                        System.out.println("Sending code: " + Arrays.toString(code));
+                                        System.out.println(code.length + " Sending code: " + Arrays.toString(code));
                                         // Divide the code to send it in smaller chunks
-                                        String codeString = Arrays.toString(code);
-                                        int chunkSize = 65535;
-                                        for (int i = 0; i < codeString.length(); i += chunkSize) {
-                                            int endIndex = Math.min(i + chunkSize, codeString.length());
-                                            String chunk = codeString.substring(i, endIndex);
-                                            doss.writeUTF(chunk);
-                                        }
+                                        doss.writeInt(code.length);
                                         doss.flush();
+                                        try {
+                                            int chunkSize = 65535;
+                                            int offset = 0;
+
+                                            while (offset < code.length) {
+                                                int length = Math.min(chunkSize, code.length - offset);
+                                                doss.write(code, offset, length);
+                                                offset += length;
+                                            }
+
+                                            doss.flush();
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
 
                                         System.out.println("Waiting");
                                         // Receive output
                                         System.out.println("Waiting to read");
-                                        String outputAux = diss.readUTF();
+                                        int outputSize = diss.readInt();
                                         byte[] output;
-                                        if (outputAux.equals("JobFunction.execute() error")){
+                                        if (outputSize == -1){
                                             String errorMessage = "Unexpeted error occorred, please run the file again";
                                             output = errorMessage.getBytes(StandardCharsets.UTF_8);
                                         } else {
-                                            System.out.println("Output 1.5: " + outputAux);
-                                            String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
-
-                                            byte[] compressed = new byte[byteValues.length];
-                                            for (int i = 0; i < byteValues.length; i++) {
-                                                compressed[i] = Byte.parseByte(byteValues[i]);
-                                            }
-                                            System.out.println("Compressed: " + Arrays.toString(compressed));
-                                            try (ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
+                                            byte[] outputCompressed = diss.readNBytes(outputSize);
+                                            try (ByteArrayInputStream bis = new ByteArrayInputStream(outputCompressed);
                                                  GZIPInputStream gis = new GZIPInputStream(bis);
-                                                 InputStreamReader reader = new InputStreamReader(gis, StandardCharsets.UTF_8);
-                                                 BufferedReader bufferedReader = new BufferedReader(reader)) {
+                                                 ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
-                                                StringBuilder content = new StringBuilder();
-                                                String line;
-                                                while ((line = bufferedReader.readLine()) != null) {
-                                                    content.append(line).append("\n");
+                                                byte[] buffer = new byte[1024];
+                                                int len;
+
+                                                while ((len = gis.read(buffer)) > 0) {
+                                                    bos.write(buffer, 0, len);
                                                 }
-                                                output = content.toString().getBytes(StandardCharsets.UTF_8);
+
+                                                output = bos.toByteArray();
                                             }
                                         }
 
@@ -173,7 +175,7 @@ public class ClientHandler extends Thread {
                                         System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
 
                                         // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                        String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                        String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
                                         Path outputPath = Paths.get(outputFilePath);
                                         Files.write(outputPath, output);
                                         System.out.println("Output saved to file: " + outputFilePath);

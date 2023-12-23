@@ -11,7 +11,7 @@ public class JobFunction {
             ByteArrayOutputStream var1 = new ByteArrayOutputStream(var0.length);
             Random var2 = new Random();
             int var3 = var2.nextInt(100);
-            if (var3 < 100) {
+            if (var3 < 10) {
                 throw new RuntimeException("Job computation failed due to runtime error.");
             } else {
                 int var4 = var0.length > 0 ? var0.length : 1;
