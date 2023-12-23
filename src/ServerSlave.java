@@ -74,7 +74,7 @@ public class ServerSlave implements Runnable {
     private void setBusy(){
         try {
             lock.lock();
-            this.free = true;
+            this.free = false;
         } finally { lock.unlock(); }
     }
 
@@ -85,6 +85,7 @@ public class ServerSlave implements Runnable {
             try {
                 System.out.println(name + " waiting for connection on port " + serverSocket.getLocalPort());
                 socket = serverSocket.accept();
+                setBusy(); // lock; free = false; unlock
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -98,8 +99,6 @@ public class ServerSlave implements Runnable {
                     System.out.println(name + " read something");
                     System.out.println("read " + code);
                     try {
-                        setBusy(); // lock; free = false; unlock
-
                         String[] byteValues = code.replaceAll("\\[|\\]|\\s", "").split(",");
 
                         // Convert the string array to a byte array
@@ -111,12 +110,19 @@ public class ServerSlave implements Runnable {
                         byte[] output = JobFunction.execute(byteArray);
 
                         System.out.println("output 1: " + Arrays.toString(output));
-                        // Send output length
-                        doss.writeUTF(Arrays.toString(output));
+                        String outputString = Arrays.toString(output);
+                        int chunkSize = 65535;
+                        for (int i = 0; i < outputString.length(); i += chunkSize) {
+                            int endIndex = Math.min(i + chunkSize, outputString.length());
+                            String chunk = outputString.substring(i, endIndex);
+                            doss.writeUTF(chunk);
+
+                        }
                         doss.flush();
 
                     } catch (JobFunctionException e) {
-                        throw new RuntimeException(e);
+                        doss.writeUTF("JobFunction.execute() error");
+                        doss.flush();
                     } finally {
                         setFree(); // lock; free = true ; signalAll ; unlock
                         break;

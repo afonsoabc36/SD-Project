@@ -128,13 +128,25 @@ public class ClientHandler extends Thread {
                                         System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
                                         System.out.println("Sending code: " + Arrays.toString(code));
-                                        doss.writeUTF(Arrays.toString(code));
+                                        // Divide the code to send it in smaller chunks
+                                        String codeString = Arrays.toString(code);
+                                        int chunkSize = 65535;
+                                        for (int i = 0; i < codeString.length(); i += chunkSize) {
+                                            int endIndex = Math.min(i + chunkSize, codeString.length());
+                                            String chunk = codeString.substring(i, endIndex);
+                                            doss.writeUTF(chunk);
+                                        }
                                         doss.flush();
 
                                         System.out.println("Waiting");
                                         // Receive output
-                                            System.out.println("Waiting to read");
-                                            String outputAux = diss.readUTF();
+                                        System.out.println("Waiting to read");
+                                        String outputAux = diss.readUTF();
+                                        byte[] output;
+                                        if (outputAux.equals("JobFunction.execute() error")){
+                                            String errorMessage = "Unexpeted error occorred, please run the file again";
+                                            output = errorMessage.getBytes(StandardCharsets.UTF_8);
+                                        } else {
                                             System.out.println("Output 1.5: " + outputAux);
                                             String[] byteValues = outputAux.replaceAll("\\[|\\]|\\s", "").split(",");
 
@@ -143,7 +155,6 @@ public class ClientHandler extends Thread {
                                                 compressed[i] = Byte.parseByte(byteValues[i]);
                                             }
                                             System.out.println("Compressed: " + Arrays.toString(compressed));
-
                                             try (ByteArrayInputStream bis = new ByteArrayInputStream(compressed);
                                                  GZIPInputStream gis = new GZIPInputStream(bis);
                                                  InputStreamReader reader = new InputStreamReader(gis, StandardCharsets.UTF_8);
@@ -154,23 +165,23 @@ public class ClientHandler extends Thread {
                                                 while ((line = bufferedReader.readLine()) != null) {
                                                     content.append(line).append("\n");
                                                 }
-
-                                                byte[] output = content.toString().getBytes(StandardCharsets.UTF_8);
-
-                                                System.out.println("Output 2: " + Arrays.toString(output));
-                                                System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
-
-                                                // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                                String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
-                                                Path outputPath = Paths.get(outputFilePath);
-                                                Files.write(outputPath, output);
-                                                System.out.println("Output saved to file: " + outputFilePath);
-
-                                                // Process output as needed
-                                                OutputFileInfo ofi = new OutputFileInfo(this.client, output);
-                                                this.doneFiles.insertDoneFile(ofi);
-                                                this.toDoFiles.removeToDoFile(cfi);
+                                                output = content.toString().getBytes(StandardCharsets.UTF_8);
                                             }
+                                        }
+
+                                        System.out.println("Output 2: " + Arrays.toString(output));
+                                        System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
+
+                                        // FIXME: Cliente a ser criado sem nome, dar set do nome dele
+                                        String outputFilePath = "./output/" + client.getName() + "/" + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                        Path outputPath = Paths.get(outputFilePath);
+                                        Files.write(outputPath, output);
+                                        System.out.println("Output saved to file: " + outputFilePath);
+
+                                        // Process output as needed
+                                        OutputFileInfo ofi = new OutputFileInfo(this.client, output);
+                                        this.doneFiles.insertDoneFile(ofi);
+                                        this.toDoFiles.removeToDoFile(cfi);
                                     } catch (IOException e) {
                                             throw new RuntimeException(e);
                                         }
@@ -195,7 +206,11 @@ public class ClientHandler extends Thread {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            if (e instanceof EOFException) { // Socket do cliente fecha
+                System.out.println("Client "+ client.getName() + " disconnected");
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 }

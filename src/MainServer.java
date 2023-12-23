@@ -14,9 +14,8 @@ import java.io.FileWriter;
 
 public class MainServer implements Runnable {
 
-    int port = 12347;
+    int port = 12346;
     private ServerSocket serverSocket;
-    private ServerSocket serverSlaveSocket;
     private DoneFiles doneFiles;
     private ToDoFiles toDoFiles;
     private ServerSlaves serverSlaves;
@@ -25,7 +24,6 @@ public class MainServer implements Runnable {
 
     public MainServer() throws IOException {
         this.serverSocket = new ServerSocket(12345);
-        this.serverSlaveSocket = new ServerSocket(12346);
         this.doneFiles = new DoneFiles();
         this.toDoFiles = new ToDoFiles();
         this.clients = new Clients();
@@ -50,7 +48,6 @@ public class MainServer implements Runnable {
     public void run() {
         try {
             System.out.println("Listening for connections on port " + this.serverSocket.getLocalPort());
-            System.out.println("Listening for connections on port " + this.serverSlaveSocket.getLocalPort());
 
             for (ServerSlave slave : serverSlaves.getServerSlaves().values()) { // Criar threads para correr os slaves
                 Thread thread = new Thread(slave);
