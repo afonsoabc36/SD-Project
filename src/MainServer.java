@@ -2,22 +2,18 @@ import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileWriter;
 
 
-// Acho que devia existir um main para permitir que o server corresse
-
-
 public class MainServer implements Runnable {
-
     int port = 12346;
     private ServerSocket serverSocket;
-    private DoneFiles doneFiles;
-    private ToDoFiles toDoFiles;
+    private DoneFiles doneFiles; // TODO: Deve ser desnecessário
+    private ToDoFiles toDoFiles; // TODO: Deve ser desnecessário
     private ServerSlaves serverSlaves;
     private Clients clients;
     private int nOfSlaves = 6;
@@ -33,6 +29,7 @@ public class MainServer implements Runnable {
 
 
     public void initializeSlaves(int N, int capacity) throws IOException {
+        this.serverSlaves = new ServerSlaves();
         HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
         for (int i = 0; i<N; i++) {
             String name = "ServerSlave" + i;
@@ -41,7 +38,7 @@ public class MainServer implements Runnable {
             hash.put(name,serverSlave);
         }
 
-        this.serverSlaves = new ServerSlaves(hash);
+        this.serverSlaves.setServerSlaves(hash);
     }
 
     @Override
@@ -60,6 +57,7 @@ public class MainServer implements Runnable {
             }
 
         } catch (IOException e) {
+            // TODO: fechar sockets e writers
             e.printStackTrace();
         }
     }
@@ -161,6 +159,12 @@ class ServerSlaves {
     private ReentrantLock lock;
     private Condition condition;
 
+    ServerSlaves(){
+        this.serverSlaves = new HashMap<String, ServerSlave>();
+        this.lock = new ReentrantLock();
+        this.condition = lock.newCondition();
+    }
+
     ServerSlaves(HashMap<String, ServerSlave> serverSlaves){
         this.serverSlaves = serverSlaves;
         this.lock = new ReentrantLock();
@@ -171,6 +175,26 @@ class ServerSlaves {
         try{
             lock.lock();
             return this.serverSlaves.size();
+        } finally { lock.unlock(); }
+    }
+
+    public void setServerSlaves(HashMap<String,ServerSlave> serverSlaves){
+        this.serverSlaves = serverSlaves;
+    }
+
+    public void await(){
+        try{
+            this.lock.lock();
+            condition.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally { lock.unlock(); }
+    }
+
+    public void signalAll(){
+        try{
+            this.lock.lock();
+            condition.signalAll();
         } finally { lock.unlock(); }
     }
 
@@ -199,9 +223,17 @@ class ServerSlaves {
                 if (counter == getNumberSlaves()) { // Todos passaram por ser demasiado grande o ficheiro
                     return null;
                 } else {
+                    System.out.println("I'm going to await");
                     condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
                 }
             }
+        } finally { lock.unlock(); }
+    }
+
+    public Condition getCondition() {
+        try{
+            this.lock.lock();
+            return this.condition;
         } finally { lock.unlock(); }
     }
 }
@@ -211,7 +243,7 @@ class ServerSlaves {
  * Contém um Map com todos os CLients inicializados que estavam na DB
  */
 class Clients {
-    private FileWriter writer = null;
+    private FileWriter writer;
     private HashMap<String, Client> clients;
     private ReentrantLock lock;
 
@@ -256,6 +288,7 @@ class Clients {
             lock.lock();
             Client client = new Client(register[0], register[1]); // TODO: Talvez passar o socket também
             this.clients.put(client.getName(), client); // Adiciona ao HashMap
+            System.out.println("Going to add client to the DB");
             addClientDB(register); // Adiciona à DB
         } catch (IOException e) {
             e.printStackTrace();
@@ -263,7 +296,9 @@ class Clients {
     }
 
     private void addClientDB(String[] register) throws IOException {
-        writer.append(register[0]+','+register[1]+'\n');
+        System.out.println("Appending client " + Arrays.toString(register));
+        writer.append(register[0] + ',' + register[1] + '\n');
+        writer.flush();
         //writer.close();  // TODO: Não se pode fechar, arranjar um sítio para fechar quando se der close ao server
     }
 

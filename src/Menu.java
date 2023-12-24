@@ -73,7 +73,7 @@ public class Menu {
         registerButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String login[] = new String[0];
+                String login[] = new String[2];
                 String username = usernameField.getText();
                 login[0] = username;
                 String password = new String(passwordField.getPassword());

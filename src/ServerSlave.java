@@ -1,6 +1,6 @@
 /*
 * ServerSlave
-* Class used only to run code and get it's output
+* Class used only to run code and return the output
 * It does not talk to the clients in any shape or form
 * It only talks to the main server, receiving in the socket the code to execute and returning it's output
 */
@@ -8,35 +8,20 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.concurrent.locks.Condition;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class ServerSlave implements Runnable {
-    ReentrantLock lock; // TODO: Verificar se vai ser preciso, a class ServerSlaves (HashMap) já tem locks
-    Condition condition; // TODO: Verificar se vai ser preciso, a class ServerSlaves (HashMap) já tem locks
+    ReentrantLock lock;
     ServerSocket serverSocket;
     String name;
     boolean free; // True se o servidor não estiver a correr código
     int maxCapacity; // Número máximo de bytes que o código pode ter para ser executado por este servidor
 
-    public ServerSlave(int maxCapacity, String name, int port) throws java.io.IOException {
+    public ServerSlave(int maxCapacity, String name, int port) throws IOException {
         this.lock = new ReentrantLock();
-        this.condition = lock.newCondition();
-        this.serverSocket = new ServerSocket(port);
         this.name = name;
-        this.free = true;
-        this.maxCapacity = maxCapacity;
-    }
-
-    public ServerSlave(ReentrantLock lock, Condition condition, int port, int maxCapacity) throws IOException {
-        this.lock = lock;
-        this.condition = condition;
         this.serverSocket = new ServerSocket(port);
         this.free = true;
         this.maxCapacity = maxCapacity;
@@ -67,7 +52,7 @@ public class ServerSlave implements Runnable {
         try {
             lock.lock();
             this.free = true;
-            condition.signalAll();
+            System.out.println("Feito o free");
         } finally { lock.unlock(); }
     }
 
@@ -81,7 +66,7 @@ public class ServerSlave implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Socket socket = null;
+            Socket socket;
             try {
                 System.out.println(name + " waiting for connection on port " + serverSocket.getLocalPort());
                 socket = serverSocket.accept();
@@ -98,8 +83,18 @@ public class ServerSlave implements Runnable {
                 System.out.println(name + " read something with a size " + codeSize);
                 byte [] code = diss.readNBytes(codeSize);
                 System.out.println("read " + Arrays.toString(code));
+
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Future<byte[]> future = executor.submit(() -> {
+                    try {
+                        return JobFunction.execute(code);
+                    } catch (JobFunctionException e) {
+                        throw new JobFunctionException("Could not compute the job.",e);
+                    }
+                });
+
                 try {
-                    byte[] output = JobFunction.execute(code);
+                    byte[] output = future.get(15, TimeUnit.SECONDS); // Timeout de 15 segundos para correr o código
 
                     System.out.println("output 1: " + Arrays.toString(output));
 
@@ -117,9 +112,18 @@ public class ServerSlave implements Runnable {
 
                     doss.flush();
 
-                } catch (JobFunctionException e) {
-                    doss.writeInt(-1);
+                } catch (TimeoutException e) { // Excedeu o tempo de execução
+                    doss.writeInt(-2);
                     doss.flush();
+                } catch (ExecutionException e) { // Erro no executor
+                    if (e.getCause() instanceof JobFunctionException) {
+                        doss.writeInt(-1); // Erro no JobFunction.execute()
+                    } else {
+                        doss.writeInt(-3); // Erro geral
+                    }
+                    doss.flush();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 } finally {
                     setFree(); // lock; free = true ; signalAll ; unlock
                 }

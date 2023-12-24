@@ -1,10 +1,8 @@
 import java.io.*;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.HashMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -113,85 +111,99 @@ public class ClientHandler extends Thread {
                             System.out.println("Thread1");
                             this.toDoFiles.insertToDoFile(cfi); // Não deve ser necessário, pode ser para vermos se o ficheiro está em fila de espera
                             System.out.println("Inserted");
-                            try {
-                                ServerSlave ss = this.serverSlaves.getFreeServer(1);
-                                if (ss != null) {
-                                    int port = ss.getPort();
-                                    Socket sssocket = new Socket("localhost", port);
-                                    System.out.println("Slave " + ss.getName() + " acquired and talking on port " + sssocket.getLocalPort());
+                            boolean run = true;
+                            while (run){
+                                try {
+                                    ServerSlave ss = this.serverSlaves.getFreeServer(1);
+                                    if (ss != null) {
+                                        int port = ss.getPort();
+                                        Socket sssocket = new Socket("localhost", port);
+                                        System.out.println("Slave " + ss.getName() + " acquired and talking on port " + sssocket.getLocalPort());
 
-                                    try (DataInputStream diss = new DataInputStream(sssocket.getInputStream());
-                                         DataOutputStream doss =  new DataOutputStream(sssocket.getOutputStream());) {
+                                        try (DataInputStream diss = new DataInputStream(sssocket.getInputStream());
+                                             DataOutputStream doss =  new DataOutputStream(sssocket.getOutputStream());) {
 
-                                        System.out.println("Still on port " + sssocket.getLocalPort());
-                                        byte[] code = cfi.getCode();
-                                        System.out.println("Got code " + Arrays.toString(code) + " extracted");
+                                            System.out.println("Still on port " + sssocket.getLocalPort());
+                                            byte[] code = cfi.getCode();
+                                            System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
-                                        System.out.println(code.length + " Sending code: " + Arrays.toString(code));
-                                        // Divide the code to send it in smaller chunks
-                                        doss.writeInt(code.length);
-                                        doss.flush();
-                                        try {
-                                            int chunkSize = 65535;
-                                            int offset = 0;
-
-                                            while (offset < code.length) {
-                                                int length = Math.min(chunkSize, code.length - offset);
-                                                doss.write(code, offset, length);
-                                                offset += length;
-                                            }
-
+                                            System.out.println(code.length + " Sending code: " + Arrays.toString(code));
+                                            // Divide the code to send it in smaller chunks
+                                            doss.writeInt(code.length);
                                             doss.flush();
-                                        } catch (IOException e) {
-                                            e.printStackTrace();
-                                        }
+                                            try {
+                                                int chunkSize = 65535;
+                                                int offset = 0;
 
-                                        System.out.println("Waiting");
-                                        // Receive output
-                                        System.out.println("Waiting to read");
-                                        int outputSize = diss.readInt();
-                                        byte[] output;
-                                        if (outputSize == -1){
-                                            String errorMessage = "Unexpeted error occorred, please run the file again";
-                                            output = errorMessage.getBytes(StandardCharsets.UTF_8);
-                                        } else {
-                                            byte[] outputCompressed = diss.readNBytes(outputSize);
-                                            try (ByteArrayInputStream bis = new ByteArrayInputStream(outputCompressed);
-                                                 GZIPInputStream gis = new GZIPInputStream(bis);
-                                                 ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-
-                                                byte[] buffer = new byte[1024];
-                                                int len;
-
-                                                while ((len = gis.read(buffer)) > 0) {
-                                                    bos.write(buffer, 0, len);
+                                                while (offset < code.length) {
+                                                    int length = Math.min(chunkSize, code.length - offset);
+                                                    doss.write(code, offset, length);
+                                                    offset += length;
                                                 }
 
-                                                output = bos.toByteArray();
+                                                doss.flush();
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
                                             }
+
+                                            System.out.println("Waiting");
+                                            // Receive output
+                                            System.out.println("Waiting to read");
+                                            int outputSize = diss.readInt();
+                                            byte[] output;
+                                            if (outputSize < 0){
+                                                this.serverSlaves.signalAll();
+                                                String errorMessage;
+                                                if (outputSize == -1){ // JobFunctionException
+                                                    errorMessage = "JobFunction.execute() failed.\nPlease run your code again, it might not have any errors in it :)";
+                                                } else if (outputSize == -2){ // TimeoutException
+                                                    errorMessage = "File took too long to execute, please try a faster one :/\nMight be stuck on a loop";
+                                                } else { // (outputSize == -3) // Erro geral
+                                                    errorMessage = "An unexpected error occurred, please run the file again";
+                                                }
+                                                output = errorMessage.getBytes(StandardCharsets.UTF_8);
+                                            } else {
+                                                byte[] outputCompressed = diss.readNBytes(outputSize);
+                                                this.serverSlaves.signalAll();
+
+                                                // Decomprimir o ficheiro que recebe como output em dormaton GZIP
+                                                try (ByteArrayInputStream bis = new ByteArrayInputStream(outputCompressed);
+                                                     GZIPInputStream gis = new GZIPInputStream(bis);
+                                                     ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
+                                                    byte[] buffer = new byte[1024];
+                                                    int len;
+
+                                                    while ((len = gis.read(buffer)) > 0) {
+                                                        bos.write(buffer, 0, len);
+                                                    }
+
+                                                    output = bos.toByteArray();
+                                                }
+                                            }
+
+                                            System.out.println("Output 2: " + Arrays.toString(output));
+                                            System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
+
+                                            // FIXME: Cliente a ser criado sem nome, dar set do nome dele
+                                            String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                            Path outputPath = Paths.get(outputFilePath);
+                                            Files.write(outputPath, output);
+                                            System.out.println("Output saved to file: " + outputFilePath);
+
+                                            OutputFileInfo ofi = new OutputFileInfo(this.client, output);
+                                            this.doneFiles.insertDoneFile(ofi); // TODO: DoneFiles may be unnecessary
+                                            this.toDoFiles.removeToDoFile(cfi); // TODO: ToDoFiles may be unnecessary
+                                            run = false;
+                                        } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        } else {
+                                            this.serverSlaves.await();
                                         }
-
-                                        System.out.println("Output 2: " + Arrays.toString(output));
-                                        System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
-
-                                        // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                        String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
-                                        Path outputPath = Paths.get(outputFilePath);
-                                        Files.write(outputPath, output);
-                                        System.out.println("Output saved to file: " + outputFilePath);
-
-                                        // Process output as needed
-                                        OutputFileInfo ofi = new OutputFileInfo(this.client, output);
-                                        this.doneFiles.insertDoneFile(ofi);
-                                        this.toDoFiles.removeToDoFile(cfi);
-                                    } catch (IOException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    } else {
-                                    // TODO: Handle the case where no free server is available
+                                } catch (InterruptedException | IOException e) {
+                                    e.printStackTrace(); // Handle the exception properly
                                 }
-                            } catch (InterruptedException | IOException e) {
-                                e.printStackTrace(); // Handle the exception properly
                             }
                             // if no server await();
                             // ... Insert into a certain folder of a certain thing to save like a database
