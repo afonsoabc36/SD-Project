@@ -151,16 +151,9 @@ public class ClientHandler extends Thread {
                                             System.out.println("Waiting to read");
                                             int outputSize = diss.readInt();
                                             byte[] output;
-                                            if (outputSize < 0){
+                                            if (outputSize == -1){
                                                 this.serverSlaves.signalAll();
-                                                String errorMessage;
-                                                if (outputSize == -1){ // JobFunctionException
-                                                    errorMessage = "JobFunction.execute() failed.\nPlease run your code again, it might not have any errors in it :)";
-                                                } else if (outputSize == -2){ // TimeoutException
-                                                    errorMessage = "File took too long to execute, please try a faster one :/\nMight be stuck on a loop";
-                                                } else { // (outputSize == -3) // Erro geral
-                                                    errorMessage = "An unexpected error occurred, please run the file again";
-                                                }
+                                                String errorMessage = diss.readUTF();
                                                 output = errorMessage.getBytes(StandardCharsets.UTF_8);
                                             } else {
                                                 byte[] outputCompressed = diss.readNBytes(outputSize);
@@ -186,7 +179,7 @@ public class ClientHandler extends Thread {
                                             System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
 
                                             // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                            String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + LocalDateTime.now() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                            String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + "-" + cfi.getDateTime() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
                                             Path outputPath = Paths.get(outputFilePath);
                                             Files.write(outputPath, output);
                                             System.out.println("Output saved to file: " + outputFilePath);
@@ -199,15 +192,12 @@ public class ClientHandler extends Thread {
                                                 throw new RuntimeException(e);
                                             }
                                         } else {
-                                            this.serverSlaves.await();
+                                            // TODO: Mensagem de erro, ficheiro demasiado grande
                                         }
                                 } catch (InterruptedException | IOException e) {
                                     e.printStackTrace(); // Handle the exception properly
                                 }
                             }
-                            // if no server await();
-                            // ... Insert into a certain folder of a certain thing to save like a database
-                            // Main server has the file, client -> url(bytes) -> mainServer (client)
                         }).start();
                         System.out.println("I'm out");
                     } else {

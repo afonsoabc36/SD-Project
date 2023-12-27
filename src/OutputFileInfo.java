@@ -38,7 +38,7 @@ public class OutputFileInfo {
         int size = in.readInt();
         byte[] outputCode = in.readNBytes(size);
         String dateTimeAux = in.readUTF();
-        LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux);
 
         return new OutputFileInfo(client, outputCode, dateTime);
     }

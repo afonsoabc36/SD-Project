@@ -38,6 +38,7 @@ public class ClientFileInfo {
         String dateTimeAux = in.readUTF();
         LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
+
         return new ClientFileInfo(client, fileURL, dateTime);
     }
 
@@ -67,8 +68,9 @@ public class ClientFileInfo {
         this.fileURL = fileURL;
     }
 
-    public LocalDateTime getDateTime() {
-        return dateTime;
+    public String getDateTime() {
+        String time = this.dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH-mm-ss"));
+        return time;
     }
 
     public void setDateTime(LocalDateTime dateTime) {

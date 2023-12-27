@@ -89,8 +89,13 @@ public class ServerSlave implements Runnable {
                     try {
                         return JobFunction.execute(code);
                     } catch (JobFunctionException e) {
-                        throw new JobFunctionException("Could not compute the job.",e);
+                        doss.writeInt(-1);
+                        doss.flush();
+                        String errorMessage = "Error code: " + e.getCode() + "\nError message: " + e.toString();
+                        doss.writeUTF(errorMessage);
+                        doss.flush();
                     }
+                    return new byte[0];
                 });
 
                 try {
@@ -112,28 +117,26 @@ public class ServerSlave implements Runnable {
 
                     doss.flush();
 
-                } catch (TimeoutException e) { // Excedeu o tempo de execução
-                    doss.writeInt(-2);
-                    doss.flush();
-                } catch (ExecutionException e) { // Erro no executor
-                    if (e.getCause() instanceof JobFunctionException) {
-                        doss.writeInt(-1); // Erro no JobFunction.execute()
-                    } else {
-                        doss.writeInt(-3); // Erro geral
+                } catch (TimeoutException | InterruptedException | ExecutionException e) {
+                    try {
+                        doss.writeInt(-1);
+                        doss.flush();
+                        String errorMessage = "Error message: " + e.toString();
+                        doss.writeUTF(errorMessage);
+                        doss.flush();
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
                     }
-                    doss.flush();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } finally {
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } finally {
                     setFree(); // lock; free = true ; signalAll ; unlock
                 }
 
                 System.out.println(name + " got out of the loop");
-            } catch (IOException e) {
-                e.printStackTrace(); // Handle the exception properly
             }
         }
-    }
-
 }
+
 
