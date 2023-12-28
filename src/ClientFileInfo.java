@@ -11,18 +11,20 @@ public class ClientFileInfo {
     private Client client;
     private String fileURL;
     private LocalDateTime dateTime;
-    // TODO: Maybe adicionar uma variável outputName, deixamos que o utiizador dê nome ao ficheiro de output, assim sabe qual é
+    private String outputFileName;
 
-    public ClientFileInfo(Client client, String fileURL) {
+    public ClientFileInfo(Client client, String fileURL, String outputFileName) {
         this.client = client;
         this.fileURL = fileURL;
         dateTime = LocalDateTime.now();
+        this.outputFileName = outputFileName;
     }
 
-    public ClientFileInfo(Client client, String fileURL, LocalDateTime dateTime) {
+    public ClientFileInfo(Client client, String fileURL, LocalDateTime dateTime, String outputFileName) {
         this.client = client;
         this.fileURL = fileURL;
         this.dateTime = dateTime;
+        this.outputFileName = outputFileName;
     }
 
     public void serialize(DataOutputStream out) throws IOException {
@@ -30,6 +32,7 @@ public class ClientFileInfo {
         out.writeUTF(this.fileURL);
         String time = this.dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         out.writeUTF(time);
+        out.writeUTF(this.outputFileName);
     }
 
     public static ClientFileInfo deserialize(DataInputStream in) throws IOException {
@@ -37,9 +40,10 @@ public class ClientFileInfo {
         String fileURL = in.readUTF();
         String dateTimeAux = in.readUTF();
         LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String outputFileName = in.readUTF();
 
 
-        return new ClientFileInfo(client, fileURL, dateTime);
+        return new ClientFileInfo(client, fileURL, dateTime, outputFileName);
     }
 
     public Client getClient() {
@@ -68,9 +72,16 @@ public class ClientFileInfo {
         this.fileURL = fileURL;
     }
 
+    public void setOutputFileName(String outputFileName) {
+        this.outputFileName = outputFileName;
+    }
+
+    public String getOutputFileName() {
+        return this.outputFileName;
+    }
+
     public String getDateTime() {
-        String time = this.dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH-mm-ss"));
-        return time;
+        return this.dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH-mm-ss"));
     }
 
     public void setDateTime(LocalDateTime dateTime) {

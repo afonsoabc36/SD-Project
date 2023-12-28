@@ -147,6 +147,10 @@ class ToDoFiles {
         }
     }
 
+    public int sizeTodoFiles() {
+        return toDoFiles.size();
+    }
+
 }
 
 /*

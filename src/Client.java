@@ -96,6 +96,14 @@ public class Client {
         return new Client(name, password/*, new Socket(remoteIpAddress, remotePort)*/);
     }
 
+
+    public int todoFiles() throws IOException{
+        dos.writeUTF("todoFiles");
+        dos.flush();
+
+        return dis.readInt();
+    }
+
     public int hasUser(String username, String password) throws IOException {
         dos.writeUTF("login:" + username + "," + password);
         dos.flush();
@@ -131,8 +139,8 @@ public class Client {
         return -1; // Caso geral, não deve chegar aqui
     }
 
-    public int[] sendCode(String fileURL) throws IOException {
-        ClientFileInfo cfi = new ClientFileInfo(this,fileURL);
+    public int[] sendCode(String fileURL, String outputFileName) throws IOException {
+        ClientFileInfo cfi = new ClientFileInfo(this,fileURL,outputFileName);
 
         dos.writeUTF("URL"); // Header
         cfi.serialize(dos); // Conteúdo

@@ -46,7 +46,7 @@ public class Menu {
     private void loginPage(Client c) {
         JFrame frame = new JFrame("Login Page");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(300, 150);
+        frame.setSize(350, 200);
 
         JPanel panel = new JPanel(new GridLayout(3, 2));
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -140,9 +140,11 @@ public class Menu {
 
         JButton runCode = new JButton("Run Code");
         JButton seeOutputs = new JButton("See Outputs");
+        JButton seeWaitingQueue = new JButton("See Waiting Queue");
 
         panel.add(runCode);
         panel.add(seeOutputs);
+        panel.add(seeWaitingQueue);
 
         frame.add(panel, BorderLayout.CENTER);
 
@@ -164,21 +166,37 @@ public class Menu {
             }
         });
 
+        seeWaitingQueue.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    waitingQueuePage(c);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+                frame.setVisible(false);
+            }
+        });
+
         frame.setVisible(true);
     }
 
     private static void runCodePage(Client c) {
         JFrame frame = new JFrame("Run Code");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(800, 400);
+        frame.setSize(1200, 500);
         frame.setLayout(new BorderLayout());
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
 
         JButton goBack = new JButton("<-");
-        JLabel urlLabel = new JLabel("URL Label ↓");
+        JLabel urlLabel = new JLabel("Insert File Path ↓");
         JTextField urlField = new JTextField();
+        JLabel outputName = new JLabel("<html>Insert Output File Name ↓<br/>(If left blank it will be &lt;filename&gt;-&lt;current time&gt;)</html>");
+        outputName.setVerticalAlignment(JLabel.CENTER);
+        outputName.setHorizontalAlignment(JLabel.CENTER);
+        JTextField outputNameField = new JTextField();
         JButton chooseFile = new JButton("Choose File");
         JButton runCode = new JButton("Run Code");
 
@@ -188,9 +206,11 @@ public class Menu {
         centerPanel.setLayout(new GridLayout(1, 2)); // One row, two columns
 
         // Painel URL com o Label e com o Field para input
-        JPanel urlPanel = new JPanel(new GridLayout(2, 1));
+        JPanel urlPanel = new JPanel(new GridLayout(4, 1));
         urlPanel.add(urlLabel);
         urlPanel.add(urlField);
+        urlPanel.add(outputName);
+        urlPanel.add(outputNameField);
 
         centerPanel.add(urlPanel);
         centerPanel.add(chooseFile);
@@ -212,7 +232,7 @@ public class Menu {
                         JOptionPane.showMessageDialog(frame, "URL is empty. Please try again");
                     }
                     else {
-                        int[] result = c.sendCode(urlField.getText());
+                        int[] result = c.sendCode(urlField.getText(), outputNameField.getText());
                         if (result[0] == 1) { // Ficheiro não encontrado
                             JOptionPane.showMessageDialog(frame, "URL is not valid. Please try again");
                         } else if (result[0] == 0){
@@ -256,6 +276,43 @@ public class Menu {
         frame.setVisible(true);
     }
 
+
+    private static void waitingQueuePage(Client c) throws IOException {
+        JFrame frame = new JFrame("Waiting Queue Page");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 400);
+        frame.setLayout(new BorderLayout());
+
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JButton goBack = new JButton("<-");
+
+        panel.add(goBack, BorderLayout.WEST);
+
+        // Go Back Button
+        goBack.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainMenuPage(c);
+                frame.setVisible(false);
+            }
+        });
+
+        // Display contents of c.todoFiles() in a JEditorPane with HTML formatting
+        JEditorPane editorPane = new JEditorPane();
+        editorPane.setContentType("text/html");
+        editorPane.setEditable(false);
+
+        // Format the text using HTML
+        String formattedText = "<html><body style='font-family: Arial, sans-serif; font-size: 14px;'>" + "The number of processes in the waiting queue are: " + c.todoFiles() + "</body></html>";
+        editorPane.setText(formattedText);
+
+        JScrollPane scrollPane = new JScrollPane(editorPane);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        frame.add(panel);
+        frame.setVisible(true);
+    }
 
     private static void outputsPage(Client c) {
         JFrame frame = new JFrame("Outputs Page");

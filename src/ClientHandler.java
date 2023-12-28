@@ -95,6 +95,9 @@ public class ClientHandler extends Thread {
                     }
                     dos.flush();
                 }
+                else if (data.startsWith("todoFiles")){
+                    dos.writeInt(toDoFiles.sizeTodoFiles());
+                }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
 
@@ -178,8 +181,12 @@ public class ClientHandler extends Thread {
                                             System.out.println("Output 2: " + Arrays.toString(output));
                                             System.out.println("Hello World: " + Arrays.toString("Hello World".getBytes(StandardCharsets.UTF_8)));
 
-                                            // FIXME: Cliente a ser criado sem nome, dar set do nome dele
-                                            String outputFilePath = "./output/" + client.getName() + "/" + cfi.getFileName() + "-" + cfi.getDateTime() + ".txt"; // TODO: Adicionar opção do user dar nome ao ficheiro de output
+                                            String outputFilePath = "./output/" + client.getName() + "/";
+                                            if(cfi.getOutputFileName().isEmpty()){
+                                                outputFilePath += cfi.getFileName() + "-" + cfi.getDateTime() + ".txt";
+                                            } else {
+                                                outputFilePath += cfi.getOutputFileName() + ".txt";
+                                            }
                                             Path outputPath = Paths.get(outputFilePath);
                                             Files.write(outputPath, output);
                                             System.out.println("Output saved to file: " + outputFilePath);
