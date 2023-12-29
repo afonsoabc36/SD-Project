@@ -104,6 +104,13 @@ public class Client {
         return dis.readInt();
     }
 
+    public int freeSpace() throws IOException{
+        dos.writeUTF("freeSpace");
+        dos.flush();
+
+        return dis.readInt();
+    }
+
     public int hasUser(String username, String password) throws IOException {
         dos.writeUTF("login:" + username + "," + password);
         dos.flush();

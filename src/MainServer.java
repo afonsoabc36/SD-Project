@@ -1,9 +1,7 @@
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileWriter;
@@ -30,12 +28,12 @@ public class MainServer implements Runnable {
 
     public void initializeSlaves(int N, int capacity) throws IOException {
         this.serverSlaves = new ServerSlaves();
-        HashMap<String,ServerSlave> hash = new HashMap<>(); // TODO: HashMap may be unnecessary
+        ArrayList<ServerSlave> hash = new ArrayList<>(); // TODO: HashMap may be unnecessary
         for (int i = 0; i<N; i++) {
             String name = "ServerSlave" + i;
 
             ServerSlave serverSlave = new ServerSlave(capacity, name, port++); // TODO: Change capacity
-            hash.put(name,serverSlave);
+            hash.add(serverSlave);
         }
 
         this.serverSlaves.setServerSlaves(hash);
@@ -46,7 +44,7 @@ public class MainServer implements Runnable {
         try {
             System.out.println("Listening for connections on port " + this.serverSocket.getLocalPort());
 
-            for (ServerSlave slave : serverSlaves.getServerSlaves().values()) { // Criar threads para correr os slaves
+            for (ServerSlave slave : serverSlaves.getServerSlaves()) { // Criar threads para correr os slaves
                 Thread thread = new Thread(slave);
                 thread.start();
             }
@@ -159,20 +157,38 @@ class ToDoFiles {
  */
 class ServerSlaves {
 
-    private HashMap<String, ServerSlave> serverSlaves;
+    //private HashMap<String, ServerSlave> serverSlaves;
+    private ArrayList<ServerSlave> serverSlaves;
     private ReentrantLock lock;
     private Condition condition;
+    private int slaveMaxCapacity;
 
     ServerSlaves(){
-        this.serverSlaves = new HashMap<String, ServerSlave>();
+        this.serverSlaves = new ArrayList<ServerSlave>();
         this.lock = new ReentrantLock();
         this.condition = lock.newCondition();
+        this.slaveMaxCapacity = 0;
     }
 
-    ServerSlaves(HashMap<String, ServerSlave> serverSlaves){
+    ServerSlaves(ArrayList<ServerSlave> serverSlaves){
         this.serverSlaves = serverSlaves;
         this.lock = new ReentrantLock();
         this.condition = lock.newCondition();
+        this.slaveMaxCapacity = 0;
+        for (ServerSlave ss : this.serverSlaves) {
+            int slaveCapacity = ss.getMaxCapacity();
+            if (slaveCapacity > this.slaveMaxCapacity){
+                this.slaveMaxCapacity = ss.getMaxCapacity();
+            }
+        }
+    }
+
+    public int getFreeMemory() {
+        int allMemory = 0;
+        for (ServerSlave s : this.serverSlaves) {
+            allMemory += s.availableCapacity;
+        }
+        return allMemory;
     }
 
     public int getNumberSlaves(){
@@ -182,7 +198,7 @@ class ServerSlaves {
         } finally { lock.unlock(); }
     }
 
-    public void setServerSlaves(HashMap<String,ServerSlave> serverSlaves){
+    public void setServerSlaves(ArrayList<ServerSlave> serverSlaves){
         this.serverSlaves = serverSlaves;
     }
 
@@ -202,7 +218,7 @@ class ServerSlaves {
         } finally { lock.unlock(); }
     }
 
-    public HashMap<String, ServerSlave> getServerSlaves(){
+    public ArrayList<ServerSlave> getServerSlaves(){
         try {
             lock.lock();
             return this.serverSlaves;
@@ -210,26 +226,19 @@ class ServerSlaves {
     }
 
     // Função que retorna o nome do primeiro ServerSlave livre, se o ficheiro for demasiado grande retorna "Size capacity exceeded"
-    public ServerSlave getFreeServer(int space) throws InterruptedException {
+    public ServerSlave getFreeServer(int memory) throws InterruptedException {
         try {
             lock.lock();
+            orderServerSlaves();
             while (true) { // TODO: Maybe true não seja o mais indicado, Verificar
-                int counter = 0;
-                for (ServerSlave slave : serverSlaves.values()) {
-                    if (slave.isFree()) {
-                        if (slave.getMaxCapacity() > space) {
-                            return slave; // TODO: Maybe dar return logo do ServerSlave
-                        } else {
-                            counter++;
-                        }
+                if (memory < this.slaveMaxCapacity) return null; // Nenhum slave consegue correr esse código, não têm memória suficiente
+                for (ServerSlave slave : serverSlaves) {
+                    if (slave.getAvailableCapacity() > memory) {
+                        return slave;
                     }
                 }
-                if (counter == getNumberSlaves()) { // Todos passaram por ser demasiado grande o ficheiro
-                    return null;
-                } else {
-                    System.out.println("I'm going to await");
-                    condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
-                }
+                System.out.println("I'm going to await");
+                condition.await(); // Caso nenhum dos servidores esteja livre, esperar até que algum conclua o seu trabalho e dê signalAll()
             }
         } finally { lock.unlock(); }
     }
@@ -239,6 +248,22 @@ class ServerSlaves {
             this.lock.lock();
             return this.condition;
         } finally { lock.unlock(); }
+    }
+
+    public void orderServerSlaves() {
+        Collections.sort(serverSlaves, new Comparator<ServerSlave>() {
+            @Override
+            public int compare(ServerSlave slave1, ServerSlave slave2) {
+                // Free slaves come first
+                if (slave1.isFree() && !slave2.isFree()) {
+                    return -1;
+                } else if (!slave1.isFree() && slave2.isFree()) {
+                    return 1;
+                } else {
+                    return Integer.compare(slave2.getAvailableCapacity(), slave1.getAvailableCapacity());
+                }
+            }
+        });
     }
 }
 

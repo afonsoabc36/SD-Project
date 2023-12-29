@@ -98,6 +98,9 @@ public class ClientHandler extends Thread {
                 else if (data.startsWith("todoFiles")){
                     dos.writeInt(toDoFiles.sizeTodoFiles());
                 }
+                else if (data.startsWith("freeSpace")){
+                    dos.writeInt(serverSlaves.getFreeMemory());
+                }
                 else if (data.equals("URL")){
                     ClientFileInfo cfi = ClientFileInfo.deserialize(dis);
 
@@ -117,7 +120,8 @@ public class ClientHandler extends Thread {
                             boolean run = true;
                             while (run){
                                 try {
-                                    ServerSlave ss = this.serverSlaves.getFreeServer(1);
+                                    int memoryUsage = cfi.getMemoryUsage();
+                                    ServerSlave ss = this.serverSlaves.getFreeServer(memoryUsage);
                                     if (ss != null) {
                                         int port = ss.getPort();
                                         Socket sssocket = new Socket("localhost", port);
@@ -149,14 +153,17 @@ public class ClientHandler extends Thread {
                                                 e.printStackTrace();
                                             }
 
+                                            doss.writeInt(memoryUsage); // Envia a ocupação de memória do ficheiro
+                                            doss.flush();
+
                                             System.out.println("Waiting");
                                             // Receive output
                                             System.out.println("Waiting to read");
                                             int outputSize = diss.readInt();
                                             byte[] output;
                                             if (outputSize == -1){
-                                                this.serverSlaves.signalAll();
                                                 String errorMessage = diss.readUTF();
+                                                this.serverSlaves.signalAll();
                                                 output = errorMessage.getBytes(StandardCharsets.UTF_8);
                                             } else {
                                                 byte[] outputCompressed = diss.readNBytes(outputSize);
@@ -217,11 +224,7 @@ public class ClientHandler extends Thread {
                 }
             }
         } catch (IOException e) {
-            if (e instanceof EOFException) { // Socket do cliente fecha
-                System.out.println("Client "+ client.getName() + " disconnected");
-            } else {
-                e.printStackTrace();
-            }
+            System.out.println("Client "+ client.getName() + " disconnected");
         }
     }
 }

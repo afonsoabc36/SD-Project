@@ -304,7 +304,7 @@ public class Menu {
         editorPane.setEditable(false);
 
         // Format the text using HTML
-        String formattedText = "<html><body style='font-family: Arial, sans-serif; font-size: 14px;'>" + "The number of processes in the waiting queue are: " + c.todoFiles() + "</body></html>";
+        String formattedText = "<html><body style='font-family: Arial, sans-serif; font-size: 14px;'>" + "The number of processes in the waiting queue are: " + c.todoFiles() + "<br>"+ "And the free space is: " + c.freeSpace()  +"</body></html>";
         editorPane.setText(formattedText);
 
         JScrollPane scrollPane = new JScrollPane(editorPane);

@@ -1,5 +1,6 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +43,6 @@ public class ClientFileInfo {
         LocalDateTime dateTime = LocalDateTime.parse(dateTimeAux, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String outputFileName = in.readUTF();
 
-
         return new ClientFileInfo(client, fileURL, dateTime, outputFileName);
     }
 
@@ -56,6 +56,11 @@ public class ClientFileInfo {
 
     public String getFileURL() {
         return fileURL;
+    }
+
+    public int getMemoryUsage() {
+        File file = new File(this.fileURL);
+        return (int)file.length();
     }
 
     public String getFileName() {

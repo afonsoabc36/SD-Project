@@ -8,8 +8,11 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ServerSlave implements Runnable {
@@ -18,6 +21,10 @@ public class ServerSlave implements Runnable {
     String name;
     boolean free; // True se o servidor não estiver a correr código
     int maxCapacity; // Número máximo de bytes que o código pode ter para ser executado por este servidor
+    int availableCapacity;
+    AtomicInteger requestID;
+    List<Integer> requestList;
+
 
     public ServerSlave(int maxCapacity, String name, int port) throws IOException {
         this.lock = new ReentrantLock();
@@ -25,6 +32,9 @@ public class ServerSlave implements Runnable {
         this.serverSocket = new ServerSocket(port);
         this.free = true;
         this.maxCapacity = maxCapacity;
+        this.availableCapacity = maxCapacity; // In the beggining this would be equal to the max
+        this.requestID = new AtomicInteger(1);
+        this.requestList = new ArrayList<>();
     }
 
     public String getName(){
@@ -40,6 +50,10 @@ public class ServerSlave implements Runnable {
         }
     }
 
+    public int getAvailableCapacity() {
+        return this.availableCapacity;
+    }
+
     public int getMaxCapacity() {
         return this.maxCapacity;
     }
@@ -48,19 +62,30 @@ public class ServerSlave implements Runnable {
         return this.serverSocket.getLocalPort();
     }
 
-    private void setFree(){
+    private void setFree(int requestID, int fileMemoryUsage){
         try {
             lock.lock();
-            this.free = true;
-            System.out.println("Feito o free");
+            this.requestList.remove(Integer.valueOf(requestID));
+            this.availableCapacity += fileMemoryUsage;
+            if(this.requestList.isEmpty()) this.free = true;
         } finally { lock.unlock(); }
     }
 
-    private void setBusy(){
+    private int setBusy(){
         try {
             lock.lock();
+            int result = this.requestID.getAndIncrement();
+            this.requestList.add(result);
             this.free = false;
+            return result;
         } finally { lock.unlock(); }
+    }
+
+    private void decrementCapacity(int fileCapacity){
+        try{
+            this.lock.lock();
+            this.availableCapacity -= fileCapacity;
+        } finally { this.lock.unlock(); }
     }
 
     @Override
@@ -70,73 +95,88 @@ public class ServerSlave implements Runnable {
             try {
                 System.out.println(name + " waiting for connection on port " + serverSocket.getLocalPort());
                 socket = serverSocket.accept();
-                setBusy(); // lock; free = false; unlock
+                //threads
+                Runnable runnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        int requestNumber = setBusy(); // lock; free = false; unlock ; return requestID
+                        try (DataInputStream diss = new DataInputStream(socket.getInputStream());
+                             DataOutputStream doss = new DataOutputStream(socket.getOutputStream())) {
+
+                            System.out.println(name + " waiting on port " + socket.getLocalPort());
+
+                            int codeSize = diss.readInt();
+                            System.out.println(name + " read something with a size " + codeSize);
+                            byte[] code = diss.readNBytes(codeSize);
+                            System.out.println("read " + Arrays.toString(code));
+                            int codeMemoryOcupation = diss.readInt();
+                            System.out.println("Code ocupation: " + codeMemoryOcupation);
+                            decrementCapacity(codeMemoryOcupation);
+
+                            //id = getRequestID
+                            // array.add(id)
+
+                            ExecutorService executor = Executors.newSingleThreadExecutor();
+                            int finalRequestNumber = requestNumber;
+                            Future<byte[]> future = executor.submit(() -> {
+                                try {
+                                    return JobFunction.execute(code);
+                                } catch (JobFunctionException e) {
+                                    doss.writeInt(-1);
+                                    doss.flush();
+                                    String errorMessage = "Error code: " + e.getCode() + "\nError message: " + e.toString();
+                                    doss.writeUTF(errorMessage);
+                                    doss.flush();
+                                    setFree(finalRequestNumber,codeMemoryOcupation);
+                                }
+
+                                return new byte[0];
+                            });
+
+                            try {
+                                byte[] output = future.get(15, TimeUnit.SECONDS); // Timeout de 15 segundos para correr o código
+
+                                System.out.println("output 1: " + Arrays.toString(output));
+
+                                doss.writeInt(output.length);
+                                doss.flush();
+
+                                int chunkSize = 65535;
+                                int offset = 0;
+
+                                while (offset < output.length) {
+                                    int length = Math.min(chunkSize, output.length - offset);
+                                    doss.write(output, offset, length);
+                                    offset += length;
+                                }
+
+                                doss.flush();
+
+                            } catch (TimeoutException | InterruptedException | ExecutionException e) {
+                                doss.writeInt(-1);
+                                doss.flush();
+                                String errorMessage = "Error message: " + e.toString();
+                                doss.writeUTF(errorMessage);
+                                doss.flush();
+                            } finally {
+                                setFree(requestNumber,codeMemoryOcupation);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+
+                Thread thread = new Thread(runnable);
+                thread.start();
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            try (DataInputStream diss = new DataInputStream(socket.getInputStream());
-                 DataOutputStream doss =  new DataOutputStream(socket.getOutputStream());) {
-
-                System.out.println(name + " waiting on port " + socket.getLocalPort());
-
-                int codeSize = diss.readInt();
-                System.out.println(name + " read something with a size " + codeSize);
-                byte [] code = diss.readNBytes(codeSize);
-                System.out.println("read " + Arrays.toString(code));
-
-                ExecutorService executor = Executors.newSingleThreadExecutor();
-                Future<byte[]> future = executor.submit(() -> {
-                    try {
-                        return JobFunction.execute(code);
-                    } catch (JobFunctionException e) {
-                        doss.writeInt(-1);
-                        doss.flush();
-                        String errorMessage = "Error code: " + e.getCode() + "\nError message: " + e.toString();
-                        doss.writeUTF(errorMessage);
-                        doss.flush();
-                    }
-                    return new byte[0];
-                });
-
-                try {
-                    byte[] output = future.get(15, TimeUnit.SECONDS); // Timeout de 15 segundos para correr o código
-
-                    System.out.println("output 1: " + Arrays.toString(output));
-
-                    doss.writeInt(output.length);
-                    doss.flush();
-
-                    int chunkSize = 65535;
-                    int offset = 0;
-
-                    while (offset < output.length) {
-                        int length = Math.min(chunkSize, output.length - offset);
-                        doss.write(output, offset, length);
-                        offset += length;
-                    }
-
-                    doss.flush();
-
-                } catch (TimeoutException | InterruptedException | ExecutionException e) {
-                    try {
-                        doss.writeInt(-1);
-                        doss.flush();
-                        String errorMessage = "Error message: " + e.toString();
-                        doss.writeUTF(errorMessage);
-                        doss.flush();
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                    setFree(); // lock; free = true ; signalAll ; unlock
-                }
-
-                System.out.println(name + " got out of the loop");
-            }
+            System.out.println(name + " got out of the loop");
         }
+    }
+
 }
 
 
