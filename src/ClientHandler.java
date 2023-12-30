@@ -111,7 +111,7 @@ public class ClientHandler extends Thread {
                         dos.flush();
                         System.out.println("Estimated time: " + time);
 
-                        // Criar uma thread para correr o código e meter o output noutro sítio
+                        // Criar uma thread para correr o código e meter o output na pasta
                         System.out.println("Thread");
                         new Thread(() -> {
                             System.out.println("Thread1");

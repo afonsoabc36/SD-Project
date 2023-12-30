@@ -3,8 +3,10 @@ import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.*;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileWriter;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 public class MainServer implements Runnable {
@@ -183,7 +185,7 @@ class ServerSlaves {
         }
     }
 
-    public int getFreeMemory() {
+    public int getFreeMemory() { // TODO: Adquirir o lock ou tornar isto uma função dentro da class serverSlaves e lá adquire o lock
         int allMemory = 0;
         for (ServerSlave s : this.serverSlaves) {
             allMemory += s.availableCapacity;
@@ -274,12 +276,16 @@ class ServerSlaves {
 class Clients {
     private FileWriter writer;
     private HashMap<String, Client> clients;
-    private ReentrantLock lock;
+    private ReentrantReadWriteLock lock;
+    private Lock readLock;
+    private Lock writeLock;
 
     Clients() throws IOException {
         this.clients = new HashMap<String,Client>();
         allClients();
-        this.lock = new ReentrantLock();
+        this.lock = new ReentrantReadWriteLock();
+        this.readLock = lock.readLock();
+        this.writeLock = lock.writeLock();
     }
 
     public void allClients() throws IOException {
@@ -307,21 +313,21 @@ class Clients {
 
     public Client getClient(String name){
         try {
-            lock.lock();
+            readLock.lock();
             return this.clients.get(name);
-        } finally { lock.unlock(); }
+        } finally { readLock.unlock(); }
     }
 
     public void addClient(String[] register){
         try{
-            lock.lock();
+            writeLock.lock();
             Client client = new Client(register[0], register[1]); // TODO: Talvez passar o socket também
             this.clients.put(client.getName(), client); // Adiciona ao HashMap
             System.out.println("Going to add client to the DB");
             addClientDB(register); // Adiciona à DB
         } catch (IOException e) {
             e.printStackTrace();
-        } finally { lock.unlock(); }
+        } finally { writeLock.unlock(); }
     }
 
     private void addClientDB(String[] register) throws IOException {
@@ -333,19 +339,22 @@ class Clients {
 
     public int checkLogin(String[] login) {
         try{
-            lock.lock();
+            readLock.lock();
             Client c = this.clients.get(login[0]);
             if (c == null) return 1; // Username não existe
             if (c.passwordCorrect(login[1])) {
                 return 0; // Credenciais corretas
             } else { return 2; } // Password incorreta
 
-        } finally { lock.unlock(); }
+        } finally { readLock.unlock(); }
     }
 
     public boolean nameExists(String name){
-        Client c = null;
-        c = this.clients.get(name);
-        return c != null;
+        try {
+            readLock.lock();
+            Client c = null;
+            c = this.clients.get(name);
+            return c != null;
+        } finally { readLock.unlock(); }
     }
 }

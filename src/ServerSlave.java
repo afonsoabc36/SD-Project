@@ -13,10 +13,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ServerSlave implements Runnable {
-    ReentrantLock lock;
+    ReentrantReadWriteLock lock;
+    Lock readLock;
+    Lock writeLock;
     ServerSocket serverSocket;
     String name;
     boolean free; // True se o servidor não estiver a correr código
@@ -27,7 +30,9 @@ public class ServerSlave implements Runnable {
 
 
     public ServerSlave(int maxCapacity, String name, int port) throws IOException {
-        this.lock = new ReentrantLock();
+        this.lock = new ReentrantReadWriteLock();
+        this.readLock = lock.readLock();
+        this.writeLock = lock.writeLock();
         this.name = name;
         this.serverSocket = new ServerSocket(port);
         this.free = true;
@@ -43,15 +48,18 @@ public class ServerSlave implements Runnable {
 
     public boolean isFree() {
         try {
-            lock.lock();
+            readLock.lock();
             return free;
         } finally {
-            lock.unlock();
+            readLock.unlock();
         }
     }
 
     public int getAvailableCapacity() {
-        return this.availableCapacity;
+        try {
+            readLock.lock();
+            return this.availableCapacity;
+        } finally { readLock.unlock(); }
     }
 
     public int getMaxCapacity() {
@@ -64,28 +72,28 @@ public class ServerSlave implements Runnable {
 
     private void setFree(int requestID, int fileMemoryUsage){
         try {
-            lock.lock();
+            writeLock.lock();
             this.requestList.remove(Integer.valueOf(requestID));
             this.availableCapacity += fileMemoryUsage;
             if(this.requestList.isEmpty()) this.free = true;
-        } finally { lock.unlock(); }
+        } finally { writeLock.unlock(); }
     }
 
     private int setBusy(){
         try {
-            lock.lock();
+            writeLock.lock();
             int result = this.requestID.getAndIncrement();
             this.requestList.add(result);
             this.free = false;
             return result;
-        } finally { lock.unlock(); }
+        } finally { writeLock.unlock(); }
     }
 
     private void decrementCapacity(int fileCapacity){
         try{
-            this.lock.lock();
+            this.writeLock.lock();
             this.availableCapacity -= fileCapacity;
-        } finally { this.lock.unlock(); }
+        } finally { this.writeLock.unlock(); }
     }
 
     @Override
