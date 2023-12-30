@@ -11,7 +11,7 @@ public interface ClientInterface{
     *  1 se o username não existir (utilizador deve fazer register)
     *  2 se a password estiver incorreta
     */
-    int hasUser(String username, String password) throws IOException;
+    int loginUser(String username, String password) throws IOException;
 
     /*
     * Método de registar um utilizador
@@ -20,7 +20,19 @@ public interface ClientInterface{
     *  0 se o register for bem sucedido
     *  1 se o username já existir
     */
-    int regUser(String username, String password) throws IOException;
+    int registerUser(String username, String password) throws IOException;
+
+    /*
+    * Método que permite verificar o número de pedidos em espera
+    * Retorna o número desses pedidos
+    */
+    int todoFiles() throws IOException;
+
+    /*
+    * Método que verifica o espaço total disponível nos servidores
+    * Retorna o tamanho toal em bytes
+    */
+    int freeSpace() throws IOException;
 
     /*
     * Método de enviar um ficheiro para ser corrido

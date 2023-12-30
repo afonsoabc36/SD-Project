@@ -135,9 +135,12 @@ public class ClientHandler extends Thread {
                                             System.out.println("Got code " + Arrays.toString(code) + " extracted");
 
                                             System.out.println(code.length + " Sending code: " + Arrays.toString(code));
-                                            // Divide the code to send it in smaller chunks
+                                            doss.writeInt(memoryUsage); // Envia a ocupação de memória do ficheiro
+                                            doss.flush();
+
                                             doss.writeInt(code.length);
                                             doss.flush();
+                                            // Divide the code to send it in smaller chunks
                                             try {
                                                 int chunkSize = 65535;
                                                 int offset = 0;
@@ -153,8 +156,6 @@ public class ClientHandler extends Thread {
                                                 e.printStackTrace();
                                             }
 
-                                            doss.writeInt(memoryUsage); // Envia a ocupação de memória do ficheiro
-                                            doss.flush();
 
                                             System.out.println("Waiting");
                                             // Receive output
@@ -204,10 +205,21 @@ public class ClientHandler extends Thread {
                                             run = false;
                                         } catch (IOException e) {
                                                 throw new RuntimeException(e);
-                                            }
-                                        } else {
-                                            // TODO: Mensagem de erro, ficheiro demasiado grande
                                         }
+                                    } else {
+                                        System.out.println("File too big caught");
+                                        String outputFilePath = "./output/" + client.getName() + "/";
+                                        if(cfi.getOutputFileName().isEmpty()){
+                                            outputFilePath += cfi.getFileName() + "-" + cfi.getDateTime() + ".txt";
+                                        } else {
+                                            outputFilePath += cfi.getOutputFileName() + ".txt";
+                                        }
+                                        Path outputPath = Paths.get(outputFilePath);
+                                        int maxCapacity = this.serverSlaves.getMaxCapacity();
+                                        Files.write(outputPath, ("File too big\nRun a file under " + maxCapacity + " bytes please :/").getBytes());
+                                        System.out.println("Output saved to file: " + outputFilePath);
+                                        run = false;
+                                    }
                                 } catch (InterruptedException | IOException e) {
                                     e.printStackTrace(); // Handle the exception properly
                                 }
@@ -215,6 +227,7 @@ public class ClientHandler extends Thread {
                         }).start();
                         System.out.println("I'm out");
                     } else {
+                        System.out.println("File not found");
                         dos.writeUTF("Ficheiro não encontrado");
                         dos.flush();
                     }

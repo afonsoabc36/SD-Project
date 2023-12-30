@@ -5,10 +5,11 @@ public class StressTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Client c = new Client();
-        c.regUser("User6", "pass");
+        c.registerUser("User13", "pass");
         int i = 0;
         while (i < 10) {
-            c.sendCode("C:\\Users\\Asus\\Desktop\\Desktop\\Universidade\\3º ano\\1º Semestre\\SD_2\\SD-Project\\src\\MainServer.java","");
+            c.sendCode("/home/afonsoabc36/Desktop/test.java","");
+            //c.sendCode("/home/afonsoabc36/Desktop/2 ano/2º Semestre/Programação Orientada aos Objetos/Projeto/POO-project/Menu.java","");
             Thread.sleep(1000);
             i++;
         }

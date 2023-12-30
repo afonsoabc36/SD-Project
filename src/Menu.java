@@ -10,11 +10,8 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.processing.SupportedSourceVersion;
 
@@ -35,11 +32,11 @@ public class Menu {
     }
 
     public int addClient(String username, String password) throws IOException {
-        return this.client.regUser(username, password);
+        return this.client.registerUser(username, password);
     }
 
     public int existsClient(String username, String password) throws IOException {
-        return this.client.hasUser(username, password);
+        return this.client.loginUser(username, password);
     }
 
 
@@ -193,7 +190,7 @@ public class Menu {
         JButton goBack = new JButton("<-");
         JLabel urlLabel = new JLabel("Insert File Path ↓");
         JTextField urlField = new JTextField();
-        JLabel outputName = new JLabel("<html>Insert Output File Name ↓<br/>(If left blank it will be &lt;filename&gt;-&lt;current time&gt;)</html>");
+        JLabel outputName = new JLabel("<html>Insert Output File Name ↓ (only name, not the extension)<br/>(If left blank it will be &lt;filename&gt;-&lt;current time&gt;.txt)</html>");
         outputName.setVerticalAlignment(JLabel.CENTER);
         outputName.setHorizontalAlignment(JLabel.CENTER);
         JTextField outputNameField = new JTextField();
@@ -343,6 +340,7 @@ public class Menu {
         List<String> clientOutputFiles = new ArrayList<String>();
         if (files != null) {
             clientOutputFiles = Arrays.stream(files)
+                    .sorted(Comparator.comparingLong(File::lastModified).reversed()) // Sort by last modified timestamp in descending order
                     .map(File::getName)
                     .collect(Collectors.toList());
         }

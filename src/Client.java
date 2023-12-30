@@ -81,23 +81,17 @@ public class Client {
     public void serialize(DataOutputStream out) throws IOException{
         out.writeUTF(this.name);
         out.writeUTF(this.password);
-        /*String remoteIpAddress = socket.getInetAddress().getHostAddress();
-        int remotePort = socket.getPort();
-        out.writeUTF(remoteIpAddress);
-        out.writeInt(remotePort);*/
     }
 
     public static Client deserialize(DataInputStream in) throws IOException {
         String name = in.readUTF();
         String password = in.readUTF();
-        /*String remoteIpAddress = in.readUTF();
-        int remotePort = in.readInt();*/
 
-        return new Client(name, password/*, new Socket(remoteIpAddress, remotePort)*/);
+        return new Client(name, password);
     }
 
 
-    public int todoFiles() throws IOException{
+    public int todoFiles() throws IOException {
         dos.writeUTF("todoFiles");
         dos.flush();
 
@@ -111,7 +105,7 @@ public class Client {
         return dis.readInt();
     }
 
-    public int hasUser(String username, String password) throws IOException {
+    public int loginUser(String username, String password) throws IOException {
         dos.writeUTF("login:" + username + "," + password);
         dos.flush();
 
@@ -130,7 +124,7 @@ public class Client {
         return -1; // Caso geral, não deve chegar aqui
     }
 
-    public int regUser(String username, String password) throws IOException {
+    public int registerUser(String username, String password) throws IOException {
         dos.writeUTF("register:" + username + "," + password);
         dos.flush();
 

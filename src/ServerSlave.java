@@ -79,21 +79,21 @@ public class ServerSlave implements Runnable {
         } finally { writeLock.unlock(); }
     }
 
-    private int setBusy(){
+    public void setBusy(int memory){
+        try {
+            writeLock.lock();
+            this.free = false;
+            this.availableCapacity -= memory;
+        } finally{ writeLock.unlock(); }
+    }
+
+    private int getRequestID(){
         try {
             writeLock.lock();
             int result = this.requestID.getAndIncrement();
             this.requestList.add(result);
-            this.free = false;
             return result;
         } finally { writeLock.unlock(); }
-    }
-
-    private void decrementCapacity(int fileCapacity){
-        try{
-            this.writeLock.lock();
-            this.availableCapacity -= fileCapacity;
-        } finally { this.writeLock.unlock(); }
     }
 
     @Override
@@ -107,19 +107,16 @@ public class ServerSlave implements Runnable {
                 Runnable runnable = new Runnable() {
                     @Override
                     public void run() {
-                        int requestNumber = setBusy(); // lock; free = false; unlock ; return requestID
                         try (DataInputStream diss = new DataInputStream(socket.getInputStream());
                              DataOutputStream doss = new DataOutputStream(socket.getOutputStream())) {
+                            int requestNumber = getRequestID();
 
-                            System.out.println(name + " waiting on port " + socket.getLocalPort());
+                            int codeMemoryOcupation= diss.readInt();
 
                             int codeSize = diss.readInt();
                             System.out.println(name + " read something with a size " + codeSize);
                             byte[] code = diss.readNBytes(codeSize);
                             System.out.println("read " + Arrays.toString(code));
-                            int codeMemoryOcupation = diss.readInt();
-                            System.out.println("Code ocupation: " + codeMemoryOcupation);
-                            decrementCapacity(codeMemoryOcupation);
 
                             //id = getRequestID
                             // array.add(id)
