@@ -5,7 +5,7 @@ public class StressTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Client c = new Client();
-        c.registerUser("User13", "pass");
+        c.registerUser("Cristiano", "Ronaldo");
         int i = 0;
         while (i < 10) {
             c.sendCode("/home/afonsoabc36/Desktop/test.java","");
